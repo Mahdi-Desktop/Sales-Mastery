@@ -1,301 +1,340 @@
+@model AspnetCoreMvcFull.DTO.Invoice
 @{
-  ViewData["Title"] = "Invoice - Edit";
+    ViewData["Title"] = $"Edit Invoice #{Model.InvoiceNumber}";
 }
 
 @section VendorStyles {
-<link rel="stylesheet" href="~/vendor/libs/flatpickr/flatpickr.css">
+    <link rel="stylesheet" href="~/vendor/libs/select2/select2.css" />
+    <link rel="stylesheet" href="~/vendor/libs/flatpickr/flatpickr.css" />
 }
 
 @section VendorScripts {
-<script src="~/vendor/libs/flatpickr/flatpickr.js"></script>
-<script src="~/vendor/libs/cleavejs/cleave.js"></script>
-<script src="~/vendor/libs/cleavejs/cleave-phone.js"></script>
-<script src="~/vendor/libs/jquery-repeater/jquery-repeater.js"></script>
+    <script src="~/vendor/libs/select2/select2.js"></script>
+    <script src="~/vendor/libs/flatpickr/flatpickr.js"></script>
 }
 
-@section PageStyles {
-<link rel="stylesheet" href="~/vendor/css/pages/app-invoice.css" />
-}
+<div class="container-xxl flex-grow-1 container-p-y">
+    <h4 class="fw-bold py-3 mb-4">
+        <span class="text-muted fw-light">Invoices /</span> Edit Invoice
+    </h4>
 
-@section PageScripts {
-<script src="~/js/offcanvas-add-payment.js"></script>
-<script src="~/js/offcanvas-send-invoice.js"></script>
-<script src="~/js/app-invoice-edit.js"></script>
-}
-
-@* ************** Content ************** *@
-
-<div class="row invoice-edit">
-  <!-- Invoice Edit-->
-  <div class="col-lg-9 col-12 mb-lg-0 mb-6">
-    <div class="card invoice-preview-card p-sm-12 p-6">
-      <div class="card-body invoice-preview-header rounded">
-        <div class="row text-heading px-3">
-          <div class="col-md-7 mb-md-0 mb-6 ps-0">
-            <div class="d-flex svg-illustration mb-6 gap-2 align-items-center">
-              <div class="app-brand-logo demo">
-                @await Html.PartialAsync("../_Partials/_Macros")
-              </div>
-              <span class="app-brand-text fw-bold fs-4 ms-50">
-                @TempData.Peek("appName")
-              </span>
-            </div>
-            <p class="mb-2">Office 149, 450 South Brand Brooklyn</p>
-            <p class="mb-2">San Diego County, CA 91905, USA</p>
-            <p class="mb-3">+1 (123) 456 7891, +44 (876) 543 2198</p>
-          </div>
-          <div class="col-md-5 col-8 pe-0 ps-0 ps-md-2">
-            <dl class="row mb-0 gx-4">
-              <dt class="col-sm-5 mb-2 d-md-flex align-items-center justify-content-end">
-                <span class="h5 text-capitalize mb-0 text-nowrap">Invoice</span>
-              </dt>
-              <dd class="col-sm-7">
-                <div class="input-group input-group-merge disabled">
-                  <span class="input-group-text">#</span>
-                  <input type="text" class="form-control" disabled placeholder="74909" value="74909" id="invoiceId" />
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Edit Invoice #@Model.InvoiceNumber</h5>
                 </div>
-              </dd>
-              <dt class="col-sm-5 mb-2 d-md-flex align-items-center justify-content-end">
-                <span class="fw-normal">Date Issued:</span>
-              </dt>
-              <dd class="col-sm-7">
-                <input type="text" class="form-control invoice-date" placeholder="YYYY-MM-DD" />
-              </dd>
-              <dt class="col-sm-5 d-md-flex align-items-center justify-content-end">
-                <span class="fw-normal">Due Date:</span>
-              </dt>
-              <dd class="col-sm-7 mb-0">
-                <input type="text" class="form-control due-date" placeholder="YYYY-MM-DD" />
-              </dd>
-            </dl>
-          </div>
-        </div>
-      </div>
+                <div class="card-body">
+                    <form asp-action="Edit" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="InvoiceId" />
+                        <input type="hidden" asp-for="UserId" />
+                        <input type="hidden" asp-for="InvoiceNumber" />
+                        <input type="hidden" asp-for="CreatedAt" />
 
-      <div class="card-body px-0">
-        <div class="row">
-          <div class="col-md-6 col-sm-5 col-12 mb-sm-0 mb-6">
-            <h6>Invoice To:</h6>
-            <select class="form-select mb-4 w-50">
-              <option value="Jordan Stevenson">Jordan Stevenson</option>
-              <option value="Wesley Burland">Wesley Burland</option>
-              <option value="Vladamir Koschek">Vladamir Koschek</option>
-              <option value="Tyne Widmore">Tyne Widmore</option>
-            </select>
-            <p class="mb-1">Shelby Company Limited</p>
-            <p class="mb-1">Small Heath, B10 0HF, UK</p>
-            <p class="mb-1">718-986-6062</p>
-            <p class="mb-0">peakyFBlinders&#64;gmail.com</p>
-          </div>
-          <div class="col-md-6 col-sm-7">
-            <h6>Bill To:</h6>
-            <table>
-              <tbody>
-                <tr>
-                  <td class="pe-4">Total Due:</td>
-                  <td>$12,110.55</td>
-                </tr>
-                <tr>
-                  <td class="pe-4">Bank name:</td>
-                  <td>American Bank</td>
-                </tr>
-                <tr>
-                  <td class="pe-4">Country:</td>
-                  <td>United States</td>
-                </tr>
-                <tr>
-                  <td class="pe-4">IBAN:</td>
-                  <td>ETD95476213874685</td>
-                </tr>
-                <tr>
-                  <td class="pe-4">SWIFT code:</td>
-                  <td>BR91905</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-      <hr class="mb-6 mt-0">
-      <div class="card-body pt-0 px-0">
-        <form class="source-item">
-          <div class="mb-4" data-repeater-list="group-a">
-            <div class="repeater-wrapper pt-0 pt-md-9" data-repeater-item>
-              <div class="d-flex border rounded position-relative pe-0">
-                <div class="row w-100 p-6">
-                  <div class="col-md-6 col-12 mb-md-0 mb-3">
-                    <p class="h6 repeater-title">Item</p>
-                    <select class="form-select item-details mb-6">
-                      <option value="App Design">App Design</option>
-                      <option value="App Customization" selected>App Customization</option>
-                      <option value="ABC Template">ABC Template</option>
-                      <option value="App Development">App Development</option>
-                    </select>
-                    <textarea class="form-control" rows="2" placeholder="Customization & Bug Fixes"></textarea>
-                  </div>
-                  <div class="col-md-3 col-12 mb-md-0 mb-4">
-                    <p class="h6 repeater-title">Cost</p>
-                    <input type="text" class="form-control invoice-item-price mb-5" value="24" placeholder="24" min="12" />
-                    <div class="text-heading">
-                      <div class="mb-1">Discount:</div>
-                      <span class="discount me-2">0%</span>
-                      <span class="tax-1 me-2" data-bs-toggle="tooltip" data-bs-placement="top" title="Tax 1">0%</span>
-                      <span class="tax-2" data-bs-toggle="tooltip" data-bs-placement="top" title="Tax 2">0%</span>
-                    </div>
-                  </div>
-                  <div class="col-md-2 col-12 mb-md-0 mb-4">
-                    <p class="h6 repeater-title">Qty</p>
-                    <input type="text" class="form-control invoice-item-qty" value="1" placeholder="1" min="1" max="50" />
-                  </div>
-                  <div class="col-md-1 col-12 pe-0 mt-2">
-                    <p class="h6 repeater-title">Price</p>
-                    <p class="mb-0 text-heading">$24.00</p>
-                  </div>
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="Status" class="form-label">Status</label>
+                                    <select asp-for="Status" class="form-select">
+                                        <option value="Draft">Draft</option>
+                                        <option value="Pending">Pending</option>
+                                        <option value="Paid">Paid</option>
+                                        <option value="Overdue">Overdue</option>
+                                        <option value="Cancelled">Cancelled</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="TotalAmount" class="form-label">Total Amount</label>
+                                    <input asp-for="TotalAmount" class="form-control" type="number" step="0.01" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="InvoiceDate" class="form-label">Invoice Date</label>
+                                    <input id="invoiceDate" class="form-control flatpickr-date" placeholder="YYYY-MM-DD" />
+                                    <input type="hidden" asp-for="InvoiceDate" id="invoiceDateValue" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="DueDate" class="form-label">Due Date</label>
+                                    <input id="dueDate" class="form-control flatpickr-date" placeholder="YYYY-MM-DD" />
+                                    <input type="hidden" asp-for="DueDate" id="dueDateValue" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="Notes" class="form-label">Notes</label>
+                            <textarea asp-for="Notes" class="form-control" rows="3"></textarea>
+                        </div>
+
+                        <h6 class="mb-3">Invoice Items</h6>
+                        <div id="invoiceItems">
+                            @if (Model.Items != null && Model.Items.Any())
+                            {
+                                for (int i = 0; i < Model.Items.Count; i++)
+                                {
+                                    <div class="row mb-3 invoice-item">
+                                        <input type="hidden" name="Items[@i].ProductId" value="@Model.Items[i].ProductId" />
+
+                                        <div class="col-md-3">
+                                            <div class="mb-2">
+                                                <label class="form-label">Product Name</label>
+                                                <input type="text" class="form-control" name="Items[@i].ProductName" value="@Model.Items[i].ProductName" />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-2">
+                                                <label class="form-label">Description</label>
+                                                <input type="text" class="form-control" name="Items[@i].Description" value="@Model.Items[i].Description" />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <div class="mb-2">
+                                                <label class="form-label">Quantity</label>
+                                                <input type="number" class="form-control item-quantity" name="Items[@i].Quantity" value="@Model.Items[i].Quantity" min="1" step="1" />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <div class="mb-2">
+                                                <label class="form-label">Unit Price</label>
+                                                <input type="number" class="form-control item-price" name="Items[@i].UnitPrice" value="@Model.Items[i].UnitPrice" min="0" step="0.01" />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <div class="mb-2">
+                                                <label class="form-label">Discount</label>
+                                                <input type="number" class="form-control item-discount" name="Items[@i].Discount" value="@Model.Items[i].Discount" min="0" step="0.01" />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <div class="mb-2">
+                                                <label class="form-label">Tax</label>
+                                                <input type="number" class="form-control item-tax" name="Items[@i].Tax" value="@Model.Items[i].Tax" min="0" step="0.01" />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <div class="mb-2">
+                                                <label class="form-label">Total</label>
+                                                <input type="number" class="form-control item-total" name="Items[@i].Total" value="@Model.Items[i].Total" readonly />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <div class="mb-2">
+                                                <label class="form-label">&nbsp;</label>
+                                                <button type="button" class="btn btn-danger d-block remove-item">
+                                                    <i class="ti ti-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+
+                        <div class="mb-4">
+                            <button type="button" id="addItemBtn" class="btn btn-info">
+                                <i class="ti ti-plus me-1"></i> Add Item
+                            </button>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <a asp-action="Details" asp-route-id="@Model.InvoiceId" class="btn btn-secondary">Cancel</a>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-                <div class="d-flex flex-column align-items-center justify-content-between border-start p-2">
-                  <i class="ti ti-x ti-lg cursor-pointer" data-repeater-delete></i>
-                  <div class="dropdown">
-                    <i class="ti ti-settings ti-lg cursor-pointer more-options-dropdown" role="button" id="dropdownMenuButton" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                    </i>
-                    <div class="dropdown-menu dropdown-menu-end w-px-300 p-4" aria-labelledby="dropdownMenuButton">
-
-                      <div class="row g-3">
-                        <div class="col-12">
-                          <label for="discountInput" class="form-label">Discount(%)</label>
-                          <input type="number" class="form-control" id="discountInput" min="0" max="100" />
-                        </div>
-                        <div class="col-md-6">
-                          <label for="taxInput1" class="form-label">Tax 1</label>
-                          <select name="tax-1-input" id="taxInput1" class="form-select tax-select">
-                            <option value="0%" selected>0%</option>
-                            <option value="1%">1%</option>
-                            <option value="10%">10%</option>
-                            <option value="18%">18%</option>
-                            <option value="40%">40%</option>
-                          </select>
-                        </div>
-                        <div class="col-md-6">
-                          <label for="taxInput2" class="form-label">Tax 2</label>
-                          <select name="tax-2-input" id="taxInput2" class="form-select tax-select">
-                            <option value="0%" selected>0%</option>
-                            <option value="1%">1%</option>
-                            <option value="10%">10%</option>
-                            <option value="18%">18%</option>
-                            <option value="40%">40%</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div class="dropdown-divider my-4"></div>
-                      <button type="button" class="btn btn-label-primary btn-apply-changes">Apply</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
-          </div>
-          <div class="row pb-4">
-            <div class="col-12">
-              <button type="button" class="btn btn-sm btn-primary" data-repeater-create><i class='ti ti-plus ti-14px me-1_5'></i>Add Item</button>
-            </div>
-          </div>
-        </form>
-      </div>
-      <hr class="my-0">
-      <div class="card-body px-0">
-        <div class="row row-gap-4">
-          <div class="col-md-6 mb-md-0 mb-3">
-            <div class="d-flex align-items-center mb-4">
-              <label for="salesperson" class="me-2 fw-medium text-heading">Salesperson:</label>
-              <input type="text" class="form-control" id="salesperson" placeholder="Edward Crowley" value="Edward Crowley" />
-            </div>
-            <input type="text" class="form-control" id="invoiceMsg" placeholder="Thanks for your business" value="Thanks for your business" />
-          </div>
-          <div class="col-md-6 d-flex justify-content-end">
-            <div class="invoice-calculations">
-              <div class="d-flex justify-content-between mb-2">
-                <span class="w-px-100">Subtotal:</span>
-                <span class="fw-medium text-heading">$1800</span>
-              </div>
-              <div class="d-flex justify-content-between mb-2">
-                <span class="w-px-100">Discount:</span>
-                <span class="fw-medium text-heading">$28</span>
-              </div>
-              <div class="d-flex justify-content-between mb-2">
-                <span class="w-px-100">Tax:</span>
-                <span class="fw-medium text-heading">21%</span>
-              </div>
-              <hr class="my-2" />
-              <div class="d-flex justify-content-between">
-                <span class="w-px-100">Total:</span>
-                <span class="fw-medium text-heading">$1690</span>
-              </div>
-            </div>
-          </div>
         </div>
-      </div>
-      <hr class="my-0">
-      <div class="card-body px-0">
-        <div class="row">
-          <div class="col-12">
-            <div>
-              <label for="note" class="fw-medium text-heading mb-1">Note:</label>
-              <textarea class="form-control" rows="2" id="note">It was a pleasure working with you and your team. We hope you will keep us in mind for future freelance projects. Thank You!</textarea>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
-  </div>
-  <!-- /Invoice Edit-->
-
-  <!-- Invoice Actions -->
-  <div class="col-lg-3 col-12 invoice-actions">
-    <div class="card mb-6">
-      <div class="card-body">
-        <button class="btn btn-primary d-grid w-100" data-bs-toggle="offcanvas" data-bs-target="#sendInvoiceOffcanvas">
-          <span class="d-flex align-items-center justify-content-center text-nowrap"><i class="ti ti-send ti-xs me-2"></i>Send Invoice</span>
-        </button>
-        <div class="d-flex my-4">
-          <a href="/Invoice/Preview" class="btn btn-label-secondary w-100 me-4">Preview</a>
-          <button type="button" class="btn btn-label-secondary w-100">Save</button>
-        </div>
-        <button class="btn btn-success d-grid w-100" data-bs-toggle="offcanvas" data-bs-target="#addPaymentOffcanvas">
-          <span class="d-flex align-items-center justify-content-center text-nowrap"><i class="ti ti-currency-dollar ti-xs me-1"></i>Add Payment</span>
-        </button>
-      </div>
-    </div>
-    <div>
-      <label for="acceptPaymentsVia" class="form-label">Accept payments via</label>
-      <select class="form-select mb-6" id="acceptPaymentsVia">
-        <option value="Bank Account">Bank Account</option>
-        <option value="Paypal">Paypal</option>
-        <option value="Card">Credit/Debit Card</option>
-        <option value="UPI Transfer">UPI Transfer</option>
-      </select>
-      <div class="d-flex justify-content-between mb-2">
-        <label for="payment-terms">Payment Terms</label>
-        <div class="form-check form-switch me-n2">
-          <input type="checkbox" class="form-check-input" id="payment-terms" checked />
-        </div>
-      </div>
-      <div class="d-flex justify-content-between mb-2">
-        <label for="client-notes">Client Notes</label>
-        <div class="form-check form-switch me-n2">
-          <input type="checkbox" class="form-check-input" id="client-notes" checked />
-        </div>
-      </div>
-      <div class="d-flex justify-content-between">
-        <label for="payment-stub">Payment Stub</label>
-        <div class="form-check form-switch me-n2">
-          <input type="checkbox" class="form-check-input" id="payment-stub" checked />
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- /Invoice Actions -->
 </div>
-
 <!-- Offcanvas -->
 @await Html.PartialAsync("../_Partials/_Offcanvas/OffcanvasSendInvoice")
 @await Html.PartialAsync("../_Partials/_Offcanvas/OffcanvasAddPayment")
 <!-- /Offcanvas -->
+
+    <script>
+        // Initialize flatpickr date pickers
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set initial dates from model
+            const invoiceDate = new Date(@Model.InvoiceDate.ToDateTime().Ticks / 10000);
+            const dueDate = new Date(@Model.DueDate.ToDateTime().Ticks / 10000);
+            
+            flatpickr('#invoiceDate', {
+                dateFormat: 'Y-m-d',
+                defaultDate: invoiceDate,
+                onChange: function(selectedDates, dateStr) {
+                    document.getElementById('invoiceDateValue').value = dateStr;
+                }
+            });
+               flatpickr('#dueDate', {
+                dateFormat: 'Y-m-d',
+                defaultDate: dueDate,
+                onChange: function(selectedDates, dateStr) {
+                    document.getElementById('dueDateValue').value = dateStr;
+                }
+            });
+
+            // Set initial hidden values
+            document.getElementById('invoiceDateValue').value = invoiceDate.toISOString();
+            document.getElementById('dueDateValue').value = dueDate.toISOString();
+
+            // Initialize item calculations
+            setupItemCalculations();
+
+            // Add item button
+            document.getElementById('addItemBtn').addEventListener('click', function() {
+                addNewItem();
+            });
+
+            // Remove item buttons
+            setupRemoveItemButtons();
+        });
+
+        function setupItemCalculations() {
+            const items = document.querySelectorAll('.invoice-item');
+            items.forEach(item => {
+                const quantityInput = item.querySelector('.item-quantity');
+                const priceInput = item.querySelector('.item-price');
+                const discountInput = item.querySelector('.item-discount');
+                const taxInput = item.querySelector('.item-tax');
+                const totalInput = item.querySelector('.item-total');
+
+                [quantityInput, priceInput, discountInput, taxInput].forEach(input => {
+                    input.addEventListener('change', function() {
+                        calculateItemTotal(item);
+                        calculateInvoiceTotal();
+                    });
+                });
+            });
+        }
+
+        function calculateItemTotal(item) {
+            const quantity = parseFloat(item.querySelector('.item-quantity').value) || 0;
+            const price = parseFloat(item.querySelector('.item-price').value) || 0;
+            const discount = parseFloat(item.querySelector('.item-discount').value) || 0;
+            const tax = parseFloat(item.querySelector('.item-tax').value) || 0;
+
+            const total = (quantity * price) - discount + tax;
+            item.querySelector('.item-total').value = total.toFixed(2);
+        }
+
+        function calculateInvoiceTotal() {
+            const totals = Array.from(document.querySelectorAll('.item-total')).map(input => parseFloat(input.value) || 0);
+            const invoiceTotal = totals.reduce((sum, total) => sum + total, 0);
+            document.getElementById('TotalAmount').value = invoiceTotal.toFixed(2);
+        }
+
+        function addNewItem() {
+            const itemsContainer = document.getElementById('invoiceItems');
+            const itemCount = itemsContainer.querySelectorAll('.invoice-item').length;
+
+            const newItem = document.createElement('div');
+            newItem.className = 'row mb-3 invoice-item';
+            newItem.innerHTML = `
+                <input type="hidden" name="Items[${itemCount}].ProductId" value="" />
+
+                <div class="col-md-3">
+                    <div class="mb-2">
+                        <label class="form-label">Product Name</label>
+                        <input type="text" class="form-control" name="Items[${itemCount}].ProductName" value="" />
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-2">
+                        <label class="form-label">Description</label>
+                        <input type="text" class="form-control" name="Items[${itemCount}].Description" value="" />
+                    </div>
+                </div>
+                <div class="col-md-1">
+                    <div class="mb-2">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" class="form-control item-quantity" name="Items[${itemCount}].Quantity" value="1" min="1" step="1" />
+                    </div>
+                </div>
+                <div class="col-md-1">
+                    <div class="mb-2">
+                        <label class="form-label">Unit Price</label>
+                        <input type="number" class="form-control item-price" name="Items[${itemCount}].UnitPrice" value="0.00" min="0" step="0.01" />
+                    </div>
+                </div>
+                <div class="col-md-1">
+                    <div class="mb-2">
+                        <label class="form-label">Discount</label>
+                        <input type="number" class="form-control item-discount" name="Items[${itemCount}].Discount" value="0.00" min="0" step="0.01" />
+                    </div>
+                </div>
+                <div class="col-md-1">
+                    <div class="mb-2">
+                        <label class="form-label">Tax</label>
+                        <input type="number" class="form-control item-tax" name="Items[${itemCount}].Tax" value="0.00" min="0" step="0.01" />
+                    </div>
+                </div>
+                <div class="col-md-1">
+                    <div class="mb-2">
+                        <label class="form-label">Total</label>
+                        <input type="number" class="form-control item-total" name="Items[${itemCount}].Total" value="0.00" readonly />
+                    </div>
+                </div>
+                <div class="col-md-1">
+                    <div class="mb-2">
+                        <label class="form-label">&nbsp;</label>
+                        <button type="button" class="btn btn-danger d-block remove-item">
+                            <i class="ti ti-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            itemsContainer.appendChild(newItem);
+
+            // Setup calculations for the new item
+            setupItemCalculations();
+
+            // Setup remove button for the new item
+            setupRemoveItemButtons();
+
+            // Calculate initial total for the new item
+            calculateItemTotal(newItem);
+            calculateInvoiceTotal();
+        }
+
+        function setupRemoveItemButtons() {
+            document.querySelectorAll('.remove-item').forEach(button => {
+                button.addEventListener('click', function() {
+                    const item = this.closest('.invoice-item');
+                    item.remove();
+
+                    // Renumber the remaining items
+                    renumberItems();
+
+                    // Recalculate invoice total
+                    calculateInvoiceTotal();
+                });
+            });
+        }
+
+        function renumberItems() {
+            const items = document.querySelectorAll('.invoice-item');
+            items.forEach((item, index) => {
+                const inputs = item.querySelectorAll('input[name^="Items["]');
+                inputs.forEach(input => {
+                    const name = input.getAttribute('name');
+                    const newName = name.replace(/Items\[\d+\]/, `Items[${index}]`);
+                    input.setAttribute('name', newName);
+                });
+            });
+        }
+    </script>
+

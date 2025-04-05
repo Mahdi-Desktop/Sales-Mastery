@@ -1,0 +1,17 @@
+@{
+    ViewData["Title"] = "Firebase Test Success";
+}
+
+<h1>Firebase Test Success</h1>
+
+<div class="alert alert-success" role="alert">
+    <h4 class="alert-heading">Success!</h4>
+    <p>The document was successfully created in Firestore.</p>
+    <hr>
+    <p class="mb-0">Document ID: <strong>@ViewBag.DocumentId</strong></p>
+</div>
+
+<div class="mt-3">
+    <a asp-action="Details" asp-route-id="@ViewBag.DocumentId" class="btn btn-info">View Document Details</a>
+    <a asp-action="Index" class="btn btn-secondary">Back to Test</a>
+</div>

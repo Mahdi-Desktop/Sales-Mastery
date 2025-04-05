@@ -1,336 +1,667 @@
+@model AspnetCoreMvcFull.DTO.User
 @{
-  ViewData["Title"] = "User View - Billing";
+    ViewData["Title"] = "User View - Billing";
 }
 
 @section VendorStyles {
-<link rel="stylesheet" href="~/vendor/libs/sweetalert2/sweetalert2.css" />
-<link rel="stylesheet" href="~/vendor/libs/select2/select2.css" />
-<link rel="stylesheet" href="~/vendor/libs/&#64;form-validation/form-validation.css" />
+    <link rel="stylesheet" href="~/vendor/libs/sweetalert2/sweetalert2.css" />
+    <link rel="stylesheet" href="~/vendor/libs/select2/select2.css" />
+    <link rel="stylesheet" href="~/vendor/libs/&#64;form-validation/form-validation.css" />
 }
 
 @section VendorScripts {
-<script src="~/vendor/libs/sweetalert2/sweetalert2.js"></script>
-<script src="~/vendor/libs/cleavejs/cleave.js"></script>
-<script src="~/vendor/libs/cleavejs/cleave-phone.js"></script>
-<script src="~/vendor/libs/select2/select2.js"></script>
-<script src="~/vendor/libs/&#64;form-validation/popular.js"></script>
-<script src="~/vendor/libs/&#64;form-validation/bootstrap5.js"></script>
-<script src="~/vendor/libs/&#64;form-validation/auto-focus.js"></script>
+    <script src="~/vendor/libs/sweetalert2/sweetalert2.js"></script>
+    <script src="~/vendor/libs/cleavejs/cleave.js"></script>
+    <script src="~/vendor/libs/cleavejs/cleave-phone.js"></script>
+    <script src="~/vendor/libs/select2/select2.js"></script>
+    <script src="~/vendor/libs/&#64;form-validation/popular.js"></script>
+    <script src="~/vendor/libs/&#64;form-validation/bootstrap5.js"></script>
+    <script src="~/vendor/libs/&#64;form-validation/auto-focus.js"></script>
 }
 
 @section PageStyles {
-<link rel="stylesheet" href="~/vendor/css/pages/page-user-view.css" />
+    <link rel="stylesheet" href="~/vendor/css/pages/page-user-view.css" />
 }
+
 @section PageScripts {
-<script src="~/js/modal-edit-user.js"></script>
-<script src="~/js/modal-edit-cc.js"></script>
-<script src="~/js/modal-add-new-cc.js"></script>
-<script src="~/js/modal-add-new-address.js"></script>
-<script src="~/js/app-user-view.js"></script>
-<script src="~/js/app-user-view-billing.js"></script>
+    <script src="~/js/modal-edit-user.js"></script>
+    <script src="~/js/modal-edit-cc.js"></script>
+    <script src="~/js/modal-add-new-cc.js"></script>
+    <script src="~/js/modal-add-new-address.js"></script>
+    <script src="~/js/app-user-view.js"></script>
+    <script src="~/js/app-user-view-billing.js"></script>
 }
 
 @* ************** Content ************** *@
 <div class="row">
-  <!-- User Sidebar -->
-  <div class="col-xl-4 col-lg-5 order-1 order-md-0">
-    <!-- User Card -->
-    <div class="card mb-6">
-      <div class="card-body pt-12">
-        <div class="user-avatar-section">
-          <div class=" d-flex align-items-center flex-column">
-            <img class="img-fluid rounded mb-4" src="~/img/avatars/1.png" height="120" width="120" alt="User avatar" />
-            <div class="user-info text-center">
-              <h5>Violet Mendoza</h5>
-              <span class="badge bg-label-secondary">Author</span>
-            </div>
-          </div>
-        </div>
-        <div class="d-flex justify-content-around flex-wrap my-6 gap-0 gap-md-3 gap-lg-4">
-          <div class="d-flex align-items-center me-5 gap-4">
-            <div class="avatar">
-              <div class="avatar-initial bg-label-primary rounded">
-                <i class='ti ti-checkbox ti-lg'></i>
-              </div>
-            </div>
-            <div>
-              <h5 class="mb-0">1.23k</h5>
-              <span>Task Done</span>
-            </div>
-          </div>
-          <div class="d-flex align-items-center gap-4">
-            <div class="avatar">
-              <div class="avatar-initial bg-label-primary rounded">
-                <i class='ti ti-briefcase ti-lg'></i>
-              </div>
-            </div>
-            <div>
-              <h5 class="mb-0">568</h5>
-              <span>Project Done</span>
-            </div>
-          </div>
-        </div>
-        <h5 class="pb-4 border-bottom mb-4">Details</h5>
-        <div class="info-container">
-          <ul class="list-unstyled mb-6">
-            <li class="mb-2">
-              <span class="h6">Username:</span>
-              <span>&#64;violet.dev</span>
-            </li>
-            <li class="mb-2">
-              <span class="h6">Email:</span>
-              <span>vafgot&#64;vultukir.org</span>
-            </li>
-            <li class="mb-2">
-              <span class="h6">Status:</span>
-              <span>Active</span>
-            </li>
-            <li class="mb-2">
-              <span class="h6">Role:</span>
-              <span>Author</span>
-            </li>
-            <li class="mb-2">
-              <span class="h6">Tax id:</span>
-              <span>Tax-8965</span>
-            </li>
-            <li class="mb-2">
-              <span class="h6">Contact:</span>
-              <span>(123) 456-7890</span>
-            </li>
-            <li class="mb-2">
-              <span class="h6">Languages:</span>
-              <span>French</span>
-            </li>
-            <li class="mb-2">
-              <span class="h6">Country:</span>
-              <span>England</span>
-            </li>
-          </ul>
-          <div class="d-flex justify-content-center">
-            <a href="javascript:;" class="btn btn-primary me-4" data-bs-target="#editUser" data-bs-toggle="modal">Edit</a>
-            <a href="javascript:;" class="btn btn-label-danger suspend-user">Suspend</a>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- /User Card -->
-    <!-- Plan Card -->
-    <div class="card mb-6 border border-2 border-primary rounded primary-shadow">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start">
-          <span class="badge bg-label-primary">Standard</span>
-          <div class="d-flex justify-content-center">
-            <sub class="h5 pricing-currency mb-auto mt-1 text-primary">$</sub>
-            <h1 class="mb-0 text-primary">99</h1>
-            <sub class="h6 pricing-duration mt-auto mb-3 fw-normal">month</sub>
-          </div>
-        </div>
-        <ul class="list-unstyled g-2 my-6">
-          <li class="mb-2 d-flex align-items-center"><i class="ti ti-circle-filled ti-10px text-secondary me-2"></i><span>10 Users</span></li>
-          <li class="mb-2 d-flex align-items-center"><i class="ti ti-circle-filled ti-10px text-secondary me-2"></i><span>Up to 10 GB storage</span></li>
-          <li class="mb-2 d-flex align-items-center"><i class="ti ti-circle-filled ti-10px text-secondary me-2"></i><span>Basic Support</span></li>
-        </ul>
-        <div class="d-flex justify-content-between align-items-center mb-1">
-          <span class="h6 mb-0">Days</span>
-          <span class="h6 mb-0">26 of 30 Days</span>
-        </div>
-        <div class="progress mb-1 bg-label-primary" style="height: 6px;">
-          <div class="progress-bar" role="progressbar" style="width: 65%;" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"></div>
-        </div>
-        <small>4 days remaining</small>
-        <div class="d-grid w-100 mt-6">
-          <button class="btn btn-primary" data-bs-target="#upgradePlanModal" data-bs-toggle="modal">Upgrade Plan</button>
-        </div>
-      </div>
-    </div>
-    <!-- /Plan Card -->
-  </div>
-  <!--/ User Sidebar -->
-
-
-  <!-- User Content -->
-  <div class="col-xl-8 col-lg-7 order-0 order-md-1">
-    <!-- User Pills -->
-    <div class="nav-align-top">
-      <ul class="nav nav-pills flex-column flex-md-row mb-6 row-gap-2">
-        <li class="nav-item"><a class="nav-link" href="ViewAccount"><i class="ti ti-user-check me-1_5 ti-sm"></i>Account</a></li>
-        <li class="nav-item"><a class="nav-link" href="ViewSecurity"><i class="ti ti-lock me-1_5 ti-sm"></i>Security</a></li>
-        <li class="nav-item"><a class="nav-link active" href="javascript:void(0);"><i class="ti ti-bookmark me-1_5 ti-sm"></i>Billing & Plans</a></li>
-        <li class="nav-item"><a class="nav-link" href="ViewNotifications"><i class="ti ti-bell me-1_5 ti-sm"></i>Notifications</a></li>
-        <li class="nav-item"><a class="nav-link" href="ViewConnections"><i class="ti ti-link me-1_5 ti-sm"></i>Connections</a></li>
-      </ul>
-    </div>
-    <!--/ User Pills -->
-
-    <!-- Current Plan -->
-    <div class="card mb-6">
-      <h5 class="card-header">Current Plan</h5>
-      <div class="card-body">
-        <div class="row row-gap-4 row-gap-xl-0">
-          <div class="col-xl-6 order-1 order-xl-0">
-            <div class="mb-4">
-              <h6 class="mb-1">Your Current Plan is Basic</h6>
-              <p>A simple start for everyone</p>
-            </div>
-            <div class="mb-4">
-              <h6 class="mb-1">Active until Dec 09, 2021</h6>
-              <p>We will send you a notification upon Subscription expiration</p>
-            </div>
-            <div class="mb-xl-6">
-              <h6 class="mb-1"><span class="me-1">$199 Per Month</span> <span class="badge bg-label-primary rounded-pill">Popular</span></h6>
-              <p class="mb-0">Standard plan for small to medium businesses</p>
-            </div>
-          </div>
-          <div class="col-xl-6 order-0 order-xl-0">
-            <div class="alert alert-warning" role="alert">
-              <h5 class="alert-heading mb-2">We need your attention!</h5>
-              <span>Your plan requires update</span>
-            </div>
-            <div class="plan-statistics">
-              <div class="d-flex justify-content-between">
-                <h6 class="mb-1">Days</h6>
-                <h6 class="mb-1">26 of 30 Days</h6>
-              </div>
-              <div class="progress mb-1 bg-label-primary" style="height: 10px;">
-                <div class="progress-bar w-75" role="progressbar" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100"></div>
-              </div>
-              <small>Your plan requires update</small>
-            </div>
-          </div>
-          <div class="col-12 order-2 order-xl-0 d-flex flex-wrap row-gap-4">
-            <button class="btn btn-primary me-3" data-bs-toggle="modal" data-bs-target="#upgradePlanModal">Upgrade Plan</button>
-            <button class="btn btn-label-danger cancel-subscription">Cancel Subscription</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- /Current Plan -->
-
-    <!-- Payment Methods -->
-    <div class="card card-action mb-6">
-      <div class="card-header align-items-center">
-        <h5 class="card-action-title mb-0">Payment Methods</h5>
-        <div class="card-action-element">
-          <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#addNewCCModal"><i class="ti ti-plus ti-14px me-1_5"></i>Add Card</button>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="added-cards">
-          <div class="cardMaster border p-6 rounded mb-4">
-            <div class="d-flex justify-content-between flex-sm-row flex-column">
-              <div class="card-information">
-                <img class="mb-2 img-fluid" src="~/img/icons/payments/mastercard.png" alt="Master Card">
-                <div class="d-flex align-items-center mb-2">
-                  <h6 class="mb-0 me-2">Kaith Morrison</h6>
-                  <span class="badge bg-label-primary me-1">Popular</span>
+    <!-- User Sidebar -->
+    <div class="col-xl-4 col-lg-5 order-1 order-md-0">
+        <!-- User Card -->
+        <div class="card mb-6">
+            <div class="card-body pt-12">
+                <div class="user-avatar-section">
+                    <div class="d-flex align-items-center flex-column">
+                        <img class="img-fluid rounded mb-4" src="~/img/avatars/1.png" height="120" width="120" alt="User avatar" />
+                        <div class="user-info text-center">
+                            <h5>
+                                @(string.IsNullOrEmpty(Model.MiddleName)
+                                    ? $"{Model.FirstName} {Model.LastName}"
+                                    : $"{Model.FirstName} {Model.MiddleName} {Model.LastName}")
+                            </h5>
+                            <span class="badge bg-label-secondary">@Model.Role</span>
+                        </div>
+                    </div>
                 </div>
-                <span class="card-number">&#8727;&#8727;&#8727;&#8727; &#8727;&#8727;&#8727;&#8727; &#8727;&#8727;&#8727;&#8727; 9856</span>
-              </div>
-              <div class="d-flex flex-column text-start text-lg-end">
-                <div class="d-flex order-sm-0 order-1">
-                  <button class="btn btn-sm btn-label-primary me-4" data-bs-toggle="modal" data-bs-target="#editCCModal">Edit</button>
-                  <button class="btn btn-sm btn-label-danger">Delete</button>
+                <h5 class="pb-4 border-bottom mb-4">Details</h5>
+                <div class="info-container">
+                    <ul class="list-unstyled mb-6">
+                        <li class="mb-2">
+                            <span class="h6">Username:</span>
+                            <span>@Model.Email?.Split('@')[0]</span>
+                        </li>
+                        <li class="mb-2">
+                            <span class="h6">Email:</span>
+                            <span>@Model.Email</span>
+                        </li>
+                        <li class="mb-2">
+                            <span class="h6">Role:</span>
+                            <span>@Model.Role</span>
+                        </li>
+                        <li class="mb-2">
+                            <span class="h6">Contact:</span>
+                            <span>@Model.PhoneNumber</span>
+                        </li>
+                    </ul>
+                    <div class="d-flex justify-content-center">
+                        <a href="javascript:;" class="btn btn-primary me-4" data-bs-target="#editUser" data-bs-toggle="modal">Edit</a>
+                        <a href="javascript:;" class="btn btn-label-danger suspend-user">Suspend</a>
+                    </div>
                 </div>
-                <small class="mt-sm-4 mt-2 order-sm-1 order-0 text-sm-end mb-2">Card expires at 12/24</small>
-              </div>
             </div>
-          </div>
-          <div class="cardMaster border p-6 rounded mb-4">
-            <div class="d-flex justify-content-between flex-sm-row flex-column">
-              <div class="card-information">
-                <img class="mb-2 img-fluid" src="~/img/icons/payments/visa.png" alt="Master Card">
-                <h6 class="mb-2 me-2">Tom McBride</h6>
-                <span class="card-number">&#8727;&#8727;&#8727;&#8727; &#8727;&#8727;&#8727;&#8727; &#8727;&#8727;&#8727;&#8727; 6542</span>
-              </div>
-              <div class="d-flex flex-column text-start text-lg-end">
-                <div class="d-flex order-sm-0 order-1">
-                  <button class="btn btn-sm btn-label-primary me-4" data-bs-toggle="modal" data-bs-target="#editCCModal">Edit</button>
-                  <button class="btn btn-sm btn-label-danger">Delete</button>
-                </div>
-                <small class="mt-sm-4 mt-2 order-sm-1 order-0 text-sm-end mb-2">Card expires at 02/24</small>
-              </div>
-            </div>
-          </div>
-          <div class="cardMaster border p-6 rounded">
-            <div class="d-flex justify-content-between flex-sm-row flex-column">
-              <div class="card-information">
-                <img class="mb-2 img-fluid" src="~/img/icons/payments/american-express-logo.png" alt="Visa Card">
-                <div class="d-flex align-items-center mb-2">
-                  <h6 class="mb-0 me-2">Mildred Wagner</h6>
-                  <span class="badge bg-label-danger me-1">Expired</span>
-                </div>
-                <span class="card-number">&#8727;&#8727;&#8727;&#8727; &#8727;&#8727;&#8727;&#8727; &#8727;&#8727;&#8727;&#8727; 5896</span>
-              </div>
-              <div class="d-flex flex-column text-start text-lg-end">
-                <div class="d-flex order-sm-0 order-1">
-                  <button class="btn btn-sm btn-label-primary me-4" data-bs-toggle="modal" data-bs-target="#editCCModal">Edit</button>
-                  <button class="btn btn-sm btn-label-danger">Delete</button>
-                </div>
-                <small class="mt-sm-4 mt-2 order-sm-1 order-0 text-sm-end mb-2">Card expires at 08/20</small>
-              </div>
-            </div>
-          </div>
         </div>
-      </div>
+        <!-- /User Card -->
     </div>
-    <!--/ Payment Methods -->
-
-    <!-- Billing Address -->
-    <div class="card card-action mb-4">
-      <div class="card-header align-items-center flex-wrap gap-2">
-        <h5 class="card-action-title mb-0">Billing Address</h5>
-        <div class="card-action-element">
-          <button class="btn btn-sm btn-primary edit-address" type="button" data-bs-toggle="modal" data-bs-target="#addNewAddress"><i class='ti ti-plus ti-14px me-1_5'></i>Edit address</button>
+    <!--/ User Sidebar -->
+    <!-- User Content -->
+    <div class="col-xl-8 col-lg-7 order-0 order-md-1">
+        <!-- User Pills -->
+        <div class="nav-align-top mb-4">
+            <ul class="nav nav-pills flex-column flex-md-row mb-6 row-gap-2">
+                <li class="nav-item">
+                    <a class="nav-link" href="@Url.Action("ViewAccount", "Users", new { id = Model.UserId })">
+                        <i class="ti ti-user-check me-1_5 ti-sm"></i>Account
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="@Url.Action("ViewSecurity", "Users", new { id = Model.UserId })">
+                        <i class="ti ti-lock me-1_5 ti-sm"></i>Security
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="javascript:void(0);">
+                        <i class="ti ti-bookmark me-1_5 ti-sm"></i>Billing & Plans
+                    </a>
+                </li>
+            </ul>
         </div>
-      </div>
-      <div class="card-body">
-        <div class="row">
-          <div class="col-xl-7 col-12">
-            <dl class="row mb-0 gx-2">
-              <dt class="col-sm-4 mb-sm-2 text-nowrap fw-medium text-heading">Company Name:</dt>
-              <dd class="col-sm-8">@TempData.Peek("authorName")</dd>
-
-              <dt class="col-sm-4 mb-sm-2 text-nowrap fw-medium text-heading">Billing Email:</dt>
-              <dd class="col-sm-8">user&#64;ex.com</dd>
-
-              <dt class="col-sm-4 mb-sm-2 text-nowrap fw-medium text-heading">Tax ID:</dt>
-              <dd class="col-sm-8">TAX-357378</dd>
-
-              <dt class="col-sm-4 mb-sm-2 text-nowrap fw-medium text-heading">VAT Number:</dt>
-              <dd class="col-sm-8">SDF754K77</dd>
-
-              <dt class="col-sm-4 mb-sm-2 text-nowrap fw-medium text-heading mb-0">Billing Address:</dt>
-              <dd class="col-sm-8 mb-0">100 Water Plant <br>Avenue, Building 1303<br> Wake Island</dd>
-            </dl>
-          </div>
-          <div class="col-xl-5 col-12">
-            <dl class="row mb-0 gx-2">
-              <dt class="col-sm-4 mb-sm-2 text-nowrap fw-medium text-heading">Contact:</dt>
-              <dd class="col-sm-8">+1 (605) 977-32-65</dd>
-
-              <dt class="col-sm-4 mb-sm-2 text-nowrap fw-medium text-heading">Country:</dt>
-              <dd class="col-sm-8">Wake Island</dd>
-
-              <dt class="col-sm-4 mb-sm-2 text-nowrap fw-medium text-heading">State:</dt>
-              <dd class="col-sm-8">Capholim</dd>
-
-              <dt class="col-sm-4 mb-sm-2 text-nowrap fw-medium text-heading">Zipcode:</dt>
-              <dd class="col-sm-8">403114</dd>
-            </dl>
-          </div>
+        <!--/ User Pills -->
+        <!-- Billing Address -->
+        <div class="card mb-4">
+            <h5 class="card-header">Billing Address</h5>
+            <div class="card-body">
+                @if (ViewBag.BillingAddress != null)
+                {
+                    var address = (AspnetCoreMvcFull.DTO.Address)ViewBag.BillingAddress;
+                    <p class="mb-1">
+                        @address.Building, @address.Floor<br>
+                        @address.Street, @address.Town<br>
+                        @address.City, @address.Governorate<br>
+                        @address.Country
+                    </p>
+                    <p class="mb-1">
+                        @if (!string.IsNullOrEmpty(address.Landmark))
+                        {
+                            <span>Landmark: @address.Landmark</span>
+                        }
+                    </p>
+                    <a href="javascript:void(0);" class="btn btn-sm btn-label-primary mt-3" data-bs-toggle="modal" data-bs-target="#editAddressModal">
+                        Edit Address
+                    </a>
+                }
+                else
+                {
+                    <p class="mb-1">No billing address on file.</p>
+                    <a href="javascript:void(0);" class="btn btn-sm btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#addAddressModal">
+                        Add Address
+                    </a>
+                }
+            </div>
         </div>
-      </div>
+        <!-- /Billing Address -->
+        <!-- Billing History -->
+        <div class="card">
+            <h5 class="card-header border-bottom">Billing History</h5>
+            <div class="card-datatable table-responsive">
+                <table class="table datatable-invoice border-top">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Invoice #</th>
+                            <th>Status</th>
+                            <th>Amount</th>
+                            <th>Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (ViewBag.Invoices != null && ((List<AspnetCoreMvcFull.DTO.Invoice>)ViewBag.Invoices).Any())
+                        {
+                            @foreach (var invoice in (List<AspnetCoreMvcFull.DTO.Invoice>)ViewBag.Invoices)
+                            {
+                                <tr>
+                                    <td></td>
+                                    <td>
+                                        <a href="javascript:void(0);" onclick="viewInvoiceDetails('@invoice.InvoiceId')">#@invoice.InvoiceNumber</a>
+                                    </td>
+                                    <td>
+                                        <span class="badge rounded-pill bg-@GetStatusBadgeColor(invoice.Status)">
+                                            @invoice.Status
+                                        </span>
+                                    </td>
+                                    <td>$@invoice.TotalAmount.ToString("0.00")</td>
+                                    <td>@invoice.InvoiceDate.ToDateTime().ToString("MMM dd, yyyy")</td>
+                                    <td>
+                                        <div class="dropdown">
+                                            <button type="button" class="btn btn-sm dropdown-toggle hide-arrow py-0" data-bs-toggle="dropdown">
+                                                <i class="ti ti-dots-vertical"></i>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <a class="dropdown-item" href="javascript:void(0);" onclick="viewInvoiceDetails('@invoice.InvoiceId')">
+                                                    <i class="ti ti-eye me-1"></i> View
+                                                </a>
+                                                <a class="dropdown-item" href="/Invoices/Download/@invoice.InvoiceId">
+                                                    <i class="ti ti-download me-1"></i> Download
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center">No invoices found for this user.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!-- /Billing History -->
     </div>
-    <!--/ Billing Address -->
+    <!--/ User Content -->
+<!-- Invoice Details Modal -->
+<div class="modal fade" id="invoiceDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Invoice Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="invoiceDetailsContent">
+                    <!-- Invoice details will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="printInvoice()">Print</button>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+    <!-- Add Address Modal -->
+    <div class="modal fade" id="addAddressModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Billing Address</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addAddressForm" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="UserId" value="@Model.UserId" />
 
-  </div>
-  <!--/ User Content -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="Country">Country</label>
+                                <input type="text" class="form-control" id="Country" name="Country" value="Lebanon" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="City">City</label>
+                                <input type="text" class="form-control" id="City" name="City" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="Governorate">Governorate</label>
+                                <input type="text" class="form-control" id="Governorate" name="Governorate" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="Town">Town</label>
+                                <input type="text" class="form-control" id="Town" name="Town" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label" for="Street">Street</label>
+                                <input type="text" class="form-control" id="Street" name="Street" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="Building">Building</label>
+                                <input type="text" class="form-control" id="Building" name="Building" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="Floor">Floor</label>
+                                <input type="text" class="form-control" id="Floor" name="Floor" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="Landmark">Landmark (Optional)</label>
+                            <input type="text" class="form-control" id="Landmark" name="Landmark">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitAddressForm()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+<!-- Edit Address Modal -->
+<div class="modal fade" id="editAddressModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Billing Address</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editAddressForm" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="UserId" value="@Model.UserId" />
+                <input type="hidden" id="edit-address-id" name="FirestoreId" />
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="edit-Country">Country</label>
+                        <input type="text" class="form-control" id="edit-Country" name="Country" value="Lebanon" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="edit-City">City</label>
+                        <input type="text" class="form-control" id="edit-City" name="City" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="edit-Governorate">Governorate</label>
+                        <input type="text" class="form-control" id="edit-Governorate" name="Governorate" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="edit-Town">Town</label>
+                        <input type="text" class="form-control" id="edit-Town" name="Town" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label" for="edit-Street">Street</label>
+                        <input type="text" class="form-control" id="edit-Street" name="Street" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="edit-Building">Building</label>
+                        <input type="text" class="form-control" id="edit-Building" name="Building" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label" for="edit-Floor">Floor</label>
+                        <input type="text" class="form-control" id="edit-Floor" name="Floor" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="edit-Landmark">Landmark (Optional)</label>
+                    <input type="text" class="form-control" id="edit-Landmark" name="Landmark">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitEditAddressForm()">Save Changes</button>
+        </div>
+    </div>
+</div>
 </div>
 
 <!-- Modal -->
 @await Html.PartialAsync("../_Partials/_Modals/ModalEditUser")
-@await Html.PartialAsync("../_Partials/_Modals/ModalEditCc")
-@await Html.PartialAsync("../_Partials/_Modals/ModalAddNewAddress")
-@await Html.PartialAsync("../_Partials/_Modals/ModalAddNewCc")
-@await Html.PartialAsync("../_Partials/_Modals/ModalUpgradePlan")
-<!-- /Modal -->
+
+@functions {
+    string GetStatusBadgeColor(string status)
+    {
+        return status?.ToLower() switch
+        {
+            "paid" => "success",
+            "downloaded" => "info",
+            "draft" => "warning",
+            "sent" => "secondary",
+            "past due" => "danger",
+            _ => "primary"
+        };
+    }
+}
+
+<script>
+    function viewInvoiceDetails(invoiceId) {
+        // Fetch invoice details via AJAX
+        fetch(`/Invoices/GetInvoiceDetails/${invoiceId}`)
+            .then(response => response.json())
+            .then(data => {
+                // Populate the modal with invoice details
+                const content = document.getElementById('invoiceDetailsContent');
+
+                let html = `
+                    <div class="invoice-details">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h6>Invoice #${data.invoiceNumber}</h6>
+                                <p>Date: ${new Date(data.invoiceDate._seconds * 1000).toLocaleDateString()}</p>
+                                <p>Status: <span class="badge bg-${getStatusClass(data.status)}">${data.status}</span></p>
+                            </div>
+                            <div class="col-md-6 text-md-end">
+                                <p>Due Date: ${new Date(data.dueDate._seconds * 1000).toLocaleDateString()}</p>
+                                <p>Total Amount: ${data.totalAmount.toFixed(2)}</p>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Description</th>
+                                        <th>Quantity</th>
+                                        <th>Unit Price</th>
+                                        <th>Discount</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+
+                // Add invoice items
+                data.items.forEach(item => {
+                    html += `
+                        <tr>
+                            <td>${item.productName} <small class="text-muted d-block">SKU: ${item.productSKU || 'N/A'}</small></td>
+                            <td>${item.description || 'N/A'}</td>
+                            <td>${item.quantity}</td>
+                            <td>${item.unitPrice.toFixed(2)}</td>
+                            <td>${item.discount.toFixed(2)}</td>
+                            <td>${item.total.toFixed(2)}</td>
+                        </tr>`;
+                });
+
+                html += `
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="5" class="text-end">Subtotal:</th>
+                                        <td>${calculateSubtotal(data.items).toFixed(2)}</td>
+                                    </tr>
+                                    <tr>
+                                        <th colspan="5" class="text-end">Tax:</th>
+                                        <td>${calculateTax(data.items).toFixed(2)}</td>
+                                    </tr>
+                                    <tr>
+                                        <th colspan="5" class="text-end">Total:</th>
+                                        <td>${data.totalAmount.toFixed(2)}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <h6>Notes:</h6>
+                                <p>${data.notes || 'No notes available'}</p>
+                            </div>
+                        </div>
+                    </div>`;
+
+                content.innerHTML = html;
+
+                // Show the modal
+                const modal = new bootstrap.Modal(document.getElementById('invoiceDetailsModal'));
+                modal.show();
+            })
+            .catch(error => {
+                console.error('Error fetching invoice details:', error);
+                alert('Failed to load invoice details. Please try again.');
+            });
+    }
+
+    function getStatusClass(status) {
+        switch (status.toLowerCase()) {
+            case 'paid': return 'success';
+            case 'pending': return 'warning';
+            case 'overdue': return 'danger';
+            case 'draft': return 'info';
+            default: return 'secondary';
+        }
+    }
+
+    function calculateSubtotal(items) {
+        return items.reduce((sum, item) => sum + item.total, 0);
+    }
+
+    function calculateTax(items) {
+        return items.reduce((sum, item) => sum + item.tax, 0);
+    }
+
+    function printInvoice() {
+        const content = document.getElementById('invoiceDetailsContent').innerHTML;
+        const printWindow = window.open('', '_blank');
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Invoice</title>
+                <link rel="stylesheet" href="/vendor/css/core.css">
+                <link rel="stylesheet" href="/vendor/css/theme-default.css">
+                <style>
+                    body { padding: 20px; }
+                    .invoice-details { max-width: 800px; margin: 0 auto; }
+                    @@media print {
+                        .no-print { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="invoice-details">
+                    <div class="text-center mb-4">
+                        <h3>INVOICE</h3>
+                    </div>
+                    ${content}
+                    <div class="text-center mt-4 no-print">
+                        <button onclick="window.print()" class="btn btn-primary">Print</button>
+                        <button onclick="window.close()" class="btn btn-secondary">Close</button>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `);
+
+        printWindow.document.close();
+    }
+
+    // Function to submit the add address form
+    function submitAddressForm() {
+        const form = document.getElementById('addAddressForm');
+        const formData = new FormData(form);
+
+        fetch('/Address/AddAddress', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    title: 'Success!',
+                    text: 'Address added successfully',
+                    icon: 'success',
+                    customClass: {
+                        confirmButton: 'btn btn-primary'
+                    },
+                    buttonsStyling: false
+                }).then(() => {
+                    // Close modal and reload page
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addAddressModal'));
+                    modal.hide();
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire({
+                    title: 'Error!',
+                    text: data.message || 'Failed to add address',
+                    icon: 'error',
+                    customClass: {
+                        confirmButton: 'btn btn-primary'
+                    },
+                    buttonsStyling: false
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                title: 'Error!',
+                text: 'An error occurred while adding the address',
+                icon: 'error',
+                customClass: {
+                    confirmButton: 'btn btn-primary'
+                },
+                buttonsStyling: false
+            });
+        });
+    }
+
+    // Function to load address data into edit form
+    function loadAddressForEdit() {
+        const addressId = '@(ViewBag.BillingAddress != null ? ((AspnetCoreMvcFull.DTO.Address)ViewBag.BillingAddress).FirestoreId : "")';
+
+        if (!addressId) return;
+
+        fetch(`/Address/GetAddress?id=${addressId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data) {
+                    document.getElementById('edit-address-id').value = data.firestoreId;
+                    document.getElementById('edit-Country').value = data.country || 'Lebanon';
+                    document.getElementById('edit-City').value = data.city || '';
+                    document.getElementById('edit-Governorate').value = data.governorate || '';
+                    document.getElementById('edit-Town').value = data.town || '';
+                    document.getElementById('edit-Street').value = data.street || '';
+                    document.getElementById('edit-Building').value = data.building || '';
+                    document.getElementById('edit-Floor').value = data.floor || '';
+                    document.getElementById('edit-Landmark').value = data.landmark || '';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching address:', error);
+            });
+    }
+
+    // Function to submit the edit address form
+    function submitEditAddressForm() {
+        const form = document.getElementById('editAddressForm');
+        const formData = new FormData(form);
+
+        fetch('/Address/UpdateAddress', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    title: 'Success!',
+                    text: 'Address updated successfully',
+                    icon: 'success',
+                    customClass: {
+                        confirmButton: 'btn btn-primary'
+                    },
+                    buttonsStyling: false
+                }).then(() => {
+                    // Close modal and reload page
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editAddressModal'));
+                    modal.hide();
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire({
+                    title: 'Error!',
+                    text: data.message || 'Failed to update address',
+                    icon: 'error',
+                    customClass: {
+                        confirmButton: 'btn btn-primary'
+                    },
+                    buttonsStyling: false
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                title: 'Error!',
+                text: 'An error occurred while updating the address',
+                icon: 'error',
+                customClass: {
+                    confirmButton: 'btn btn-primary'
+                },
+                buttonsStyling: false
+            });
+        });
+    }
+
+    // Initialize edit address modal
+    document.addEventListener('DOMContentLoaded', function() {
+        const editAddressModal = document.getElementById('editAddressModal');
+        if (editAddressModal) {
+            editAddressModal.addEventListener('show.bs.modal', function (event) {
+                loadAddressForEdit();
+            });
+        }
+    });
+</script>

@@ -14,7 +14,17 @@ public class PagesController : Controller
   public IActionResult FAQ() => View();
   public IActionResult MiscComingSoon() => View();
   public IActionResult MiscError() => View();
-  public IActionResult MiscNotAuthorized() => View();
+  public IActionResult MiscNotAuthorized()
+  {
+    // If user is logged in, redirect to dashboard
+    if (!string.IsNullOrEmpty(HttpContext.Session.GetString("UserId")))
+    {
+      return RedirectToAction("Index", "Dashboards");
+    }
+
+    return View("MiscNotAuthorized");
+  }
+
   public IActionResult MiscUnderMaintenance() => View();
   public IActionResult Pricing() => View();
   public IActionResult ProfileConnections() => View();

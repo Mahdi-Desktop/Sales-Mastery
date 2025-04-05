@@ -1,0 +1,16 @@
+@{
+    ViewData["Title"] = "Firebase Test";
+}
+
+<h1>Firebase Connection Test</h1>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Test Firebase Connection</h5>
+        <p class="card-text">Click the button below to create a test document in Firestore.</p>
+
+        <form asp-action="Create" method="post">
+            <button type="submit" class="btn btn-primary">Create Test Document</button>
+        </form>
+    </div>
+</div>

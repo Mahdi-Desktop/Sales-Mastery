@@ -1,0 +1,534 @@
+@model AspnetCoreMvcFull.DTO.Affiliate
+
+@{
+    ViewData["Title"] = "Affiliate Dashboard";
+}
+
+<div class="row">
+    <!-- Affiliate Stats -->
+    <div class="col-xl-4 col-lg-5 col-md-6">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">Performance Summary</h5>
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-3">
+                        <div class="card bg-primary text-white text-center p-3">
+                            <h5 class="card-title text-white">@ViewBag.Customers.Count</h5>
+                            <p class="card-text">Customers</p>
+                        </div>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <div class="card bg-info text-white text-center p-3">
+                            <h5 class="card-title text-white">$@ViewBag.TotalCommissions.ToString("0.00")</h5>
+                            <p class="card-text">Total Earnings</p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card bg-success text-white text-center p-3">
+                            @* <h5 class="card-title text-white">$@(ViewBag.Commissions?.Where(c => c.IsPaid).Sum(c => c.Amount).ToString("0.00") ?? "0.00")</h5> *@
+                            <h5 class="card-title text-white">$@((ViewBag.Commissions as IEnumerable<AspnetCoreMvcFull.DTO.Commission>)?.Where(c => c.IsPaid).Sum(c => c.Amount).ToString("0.00") ?? "0.00")</h5>
+
+                            <p class="card-text">Paid</p>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card bg-warning text-white text-center p-3">
+                            <h5 class="card-title text-white">$@ViewBag.UnpaidCommissions.ToString("0.00")</h5>
+                            <p class="card-text">Pending</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Brand Commission Rates -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title">Brand Commission Rates</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Brand</th>
+                                <th>Commission</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var brand in ViewBag.Brands)
+                            {
+                                <tr>
+                                    <td>@brand.Name</td>
+                                    <td>@brand.CommissionRate%</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Commission History & Customers -->
+    <div class="col-xl-8 col-lg-7 col-md-6">
+        <!-- My Customers -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">My Customers</h5>
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="offcanvas" data-bs-target="#offcanvasAddUser">
+                    <i class="ti ti-plus me-1"></i> Add Customer
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table datatable-customers">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Since</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (ViewBag.CustomerUsers != null && ViewBag.CustomerUsers.Count > 0)
+                            {
+                                                              @foreach (var customer in ViewBag.CustomerUsers)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar avatar-sm me-3">
+                                                    @{
+                                                        var initials = "";
+                                                        if (!string.IsNullOrEmpty(customer.FirstName) && customer.FirstName.Length > 0)
+                                                        {
+                                                            initials += customer.FirstName[0];
+                                                        }
+                                                        if (!string.IsNullOrEmpty(customer.LastName) && customer.LastName.Length > 0)
+                                                        {
+                                                            initials += customer.LastName[0];
+                                                        }
+
+                                                        var colorClasses = new[] { "bg-label-primary", "bg-label-success", "bg-label-danger", "bg-label-warning", "bg-label-info" };
+                                                        var colorClass = colorClasses[Math.Abs(customer.UserId?.GetHashCode() ?? 0) % colorClasses.Length];
+                                                    }
+                                                    <span class="avatar-initial rounded-circle @colorClass">@initials.ToUpper()</span>
+                                                </div>
+                                                <div>
+                                                    <span class="fw-medium">@customer.FirstName @customer.LastName</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>@customer.Email</td>
+                                        <td>@customer.PhoneNumber</td>
+                                        <td>@customer.CreatedAt.ToDateTime().ToString("MMM dd, yyyy")</td>
+                                        <td>
+                                            <div class="dropdown">
+                                                <button type="button" class="btn btn-sm dropdown-toggle hide-arrow py-0" data-bs-toggle="dropdown">
+                                                    <i class="ti ti-dots-vertical"></i>
+                                                </button>
+                                                <div class="dropdown-menu dropdown-menu-end">
+                                                    <a class="dropdown-item" href="@Url.Action("CustomerDetails", "Affiliate", new { id = customer.UserId })">
+                                                        <i class="ti ti-eye me-1"></i> View Details
+                                                    </a>
+                                                    <a class="dropdown-item" href="@Url.Action("PlaceOrder", "Orders", new { customerId = customer.UserId })">
+                                                        <i class="ti ti-shopping-cart me-1"></i> Place Order
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center">No customers found. Add your first customer!</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Commission History -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Commission History</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table datatable-commission">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Product</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (ViewBag.Commissions != null && ViewBag.Commissions.Count > 0)
+                            {
+                                @foreach (var commission in ViewBag.Commissions)
+                                {
+                                    <tr>
+                                        <td>
+                                            <a href="javascript:void(0);" onclick="viewOrderDetails('@commission.OrderId')">
+                                                #@commission.OrderId.Substring(0, 8)...
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <a href="@Url.Action("Details", "Products", new { id = commission.ProductId })">
+                                                View Product
+                                            </a>
+                                        </td>
+                                        <td>$@commission.Amount.ToString("0.00")</td>
+                                        <td>
+                                            @if (commission.IsPaid)
+                                            {
+                                                <span class="badge bg-success">Paid</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning">Pending</span>
+                                            }
+                                        </td>
+                                        <td>@commission.CreatedAt.ToDateTime().ToString("MMM dd, yyyy")</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center">No commission history found.</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="2" class="text-end">Total Earnings:</th>
+                                <th>$@ViewBag.TotalCommissions.ToString("0.00")</th>
+                                <th colspan="2"></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Customer Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasAddUser" aria-labelledby="offcanvasAddUserLabel">
+    <div class="offcanvas-header border-bottom">
+        <h5 id="offcanvasAddUserLabel" class="offcanvas-title">Add New Customer</h5>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body mx-0 flex-grow-0 p-6 h-100">
+        <form class="add-new-user pt-0" id="addNewCustomerForm" method="post" onsubmit="submitNewCustomerForm(event)">
+            @Html.AntiForgeryToken()
+            <div class="mb-6">
+                <label class="form-label" for="add-customer-FirstName">First Name</label>
+                <input type="text" class="form-control" id="add-customer-FirstName" placeholder="John" name="FirstName" required />
+            </div>
+            <div class="mb-6">
+                <label class="form-label" for="add-customer-MiddleName">Middle Name</label>
+                <input type="text" class="form-control" id="add-customer-MiddleName" placeholder="M." name="MiddleName" />
+            </div>
+            <div class="mb-6">
+                <label class="form-label" for="add-customer-LastName">Last Name</label>
+                <input type="text" class="form-control" id="add-customer-LastName" placeholder="Doe" name="LastName" required />
+            </div>
+            <div class="mb-6">
+                <label class="form-label" for="add-customer-email">Email</label>
+                <input type="email" id="add-customer-email" class="form-control" placeholder="john.doe@example.com" name="Email" required />
+            </div>
+            <div class="mb-6">
+                <label class="form-label" for="add-customer-password">Password</label>
+                <div class="input-group input-group-merge">
+                    <input type="password" id="add-customer-password" class="form-control" placeholder="••••••••" name="Password" required />
+                    <span class="input-group-text cursor-pointer"><i class="ti ti-eye-off"></i></span>
+                </div>
+                <div class="form-text">
+                    Password should be at least 8 characters
+                </div>
+            </div>
+            <div class="mb-6">
+                <label class="form-label" for="add-customer-PhoneNumber">Phone Number</label>
+                <input type="text" id="add-customer-PhoneNumber" class="form-control phone-mask" placeholder="+961 (03) 000 000" name="PhoneNumber" />
+            </div>
+            
+            <!-- Hidden fields -->
+            <input type="hidden" name="Role" value="Customer" />
+            <input type="hidden" name="ReferenceUserId" value="@Model.UserId" />
+            
+            <button type="submit" class="btn btn-primary me-3">Add Customer</button>
+            <button type="reset" class="btn btn-label-danger" data-bs-dismiss="offcanvas">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<!-- View Order Details Modal -->
+<div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Order Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="orderDetailsContent">
+                <!-- Order details will be loaded here via AJAX -->
+                <div class="text-center p-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading order details...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Initialize DataTables
+        $(document).ready(function() {
+            $('.datatable-customers').DataTable({
+                responsive: true,
+                dom: '<"d-flex justify-content-between align-items-center flex-wrap mb-3"<"dt-action-buttons"B><"dt-search"f>><"table-responsive"t><"d-flex justify-content-between"<"m-1"l><"m-1"i><"m-1"p>>',
+                buttons: [
+                    {
+                        extend: 'collection',
+                        text: '<i class="ti ti-download me-1"></i>Export',
+                        buttons: [
+                            { extend: 'excel', className: 'btn btn-light-dark' },
+                            { extend: 'pdf', className: 'btn btn-light-dark' }
+                        ],
+                        className: 'btn btn-light-dark dropdown-toggle'
+                    }
+                ],
+                pageLength: 10,
+                order: [[3, 'desc']]
+            });
+
+            $('.datatable-commission').DataTable({
+                responsive: true,
+                dom: '<"d-flex justify-content-between align-items-center flex-wrap mb-3"<"dt-action-buttons"B><"dt-search"f>><"table-responsive"t><"d-flex justify-content-between"<"m-1"l><"m-1"i><"m-1"p>>',
+                buttons: [
+                    {
+                        extend: 'collection',
+                        text: '<i class="ti ti-download me-1"></i>Export',
+                        buttons: [
+                            { extend: 'excel', className: 'btn btn-light-dark' },
+                            { extend: 'pdf', className: 'btn btn-light-dark' }
+                        ],
+                        className: 'btn btn-light-dark dropdown-toggle'
+                    }
+                ],
+                pageLength: 10,
+                order: [[4, 'desc']]
+            });
+        });
+
+        // Add new customer form submission
+        function submitNewCustomerForm(event) {
+            event.preventDefault();
+            const form = document.getElementById('addNewCustomerForm');
+            const formData = new FormData(form);
+
+            fetch('@Url.Action("AddCustomer", "Affiliate")', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Show success alert
+                    Swal.fire({
+                        title: 'Success!',
+                        text: 'Customer added successfully',
+                        icon: 'success',
+                        customClass: {
+                            confirmButton: 'btn btn-primary'
+                        },
+                        buttonsStyling: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    // Show error alert
+                    Swal.fire({
+                        title: 'Error!',
+                        text: data.message || 'Failed to add customer',
+                        icon: 'error',
+                        customClass: {
+                            confirmButton: 'btn btn-primary'
+                        },
+                        buttonsStyling: false
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'An error occurred while adding the customer.',
+                    icon: 'error',
+                    customClass: {
+                        confirmButton: 'btn btn-primary'
+                    },
+                    buttonsStyling: false
+                });
+            });
+        }
+
+        // View order details
+        function viewOrderDetails(orderId) {
+            // Reset modal content
+            document.getElementById('orderDetailsContent').innerHTML = `
+                <div class="text-center p-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading order details...</p>
+                </div>
+            `;
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+            modal.show();
+            
+            // Fetch order details
+            fetch(`@Url.Action("GetOrderDetails", "Orders")?id=${orderId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        let html = `
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <p><strong>Order ID:</strong> ${data.order.orderId}</p>
+                                    <p><strong>Customer:</strong> ${data.customerName}</p>
+                                    <p><strong>Date:</strong> ${new Date(data.order.orderDate._seconds * 1000).toLocaleDateString()}</p>
+                                    <p><strong>Status:</strong> <span class="badge bg-${getStatusClass(data.order.status)}">${data.order.status}</span></p>
+                                </div>
+                                <div class="col-md-6 text-md-end">
+                                    <p><strong>Total Amount:</strong> $${data.order.totalAmount.toFixed(2)}</p>
+                                </div>
+                            </div>
+
+                            <h6 class="mb-3">Order Items</h6>
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Product</th>
+                                            <th>Price</th>
+                                            <th>Quantity</th>
+                                            <th>Commission</th>
+                                            <th>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>`;
+
+                        // Add each order item
+                        data.orderDetails.forEach(item => {
+                            // Find matching commission for this item
+                            const itemCommission = data.commissions.find(c => c.productId === item.productId);
+                            const commissionAmount = itemCommission ? itemCommission.amount : 0;
+
+                            html += `
+                                <tr>
+                                    <td>${item.productName || 'Unknown Product'}</td>
+                                    <td>$${item.price.toFixed(2)}</td>
+                                    <td>${item.quantity}</td>
+                                    <td>$${commissionAmount.toFixed(2)}</td>
+                                    <td>$${item.subTotal.toFixed(2)}</td>
+                                </tr>`;
+                        });
+
+                        html += `
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <th colspan="3" class="text-end">Order Subtotal:</th>
+                                            <td colspan="2">$${data.order.totalAmount.toFixed(2)}</td>
+                                        </tr>
+                                        <tr>
+                                            <th colspan="3" class="text-end">Your Commission:</th>
+                                            <td colspan="2">$${data.totalCommission.toFixed(2)}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>`;
+
+                        document.getElementById('orderDetailsContent').innerHTML = html;
+                    } else {
+                        document.getElementById('orderDetailsContent').innerHTML = `
+                            <div class="alert alert-danger">
+                                <p>${data.message || 'Failed to load order details'}</p>
+                            </div>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('orderDetailsContent').innerHTML = `
+                        <div class="alert alert-danger">
+                            <p>An error occurred while loading the order details.</p>
+                        </div>`;
+                });
+        }
+
+        // Helper function to get status badge color class
+        function getStatusClass(status) {
+            switch (status.toLowerCase()) {
+                case 'completed':
+                case 'delivered':
+                    return 'success';
+                case 'processing':
+                case 'shipped':
+                    return 'info';
+                case 'pending':
+                    return 'warning';
+                case 'cancelled':
+                    return 'danger';
+                default:
+                    return 'secondary';
+            }
+        }
+
+        // Toggle password visibility
+        document.querySelectorAll('.input-group-text').forEach(toggle => {
+            toggle.addEventListener('click', function() {
+                const input = this.previousElementSibling;
+                const icon = this.querySelector('i');
+
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.replace('ti-eye-off', 'ti-eye');
+                } else {
+                    input.type = 'password';
+                    icon.classList.replace('ti-eye', 'ti-eye-off');
+                }
+            });
+        });
+    </script>
+}

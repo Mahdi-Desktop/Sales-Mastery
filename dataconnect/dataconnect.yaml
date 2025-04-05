@@ -1,0 +1,12 @@
+specVersion: "v1beta"
+serviceId: "aspnetcoremvcfull"
+location: "us-central1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "fdcdb"
+      cloudSql:
+        instanceId: "aspnetcoremvcfull-fdc"
+      # schemaValidation: "COMPATIBLE"
+connectorDirs: ["./connector"]

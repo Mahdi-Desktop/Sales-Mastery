@@ -1,0 +1,18 @@
+<a href="#"></a>
+<ul class="navbar-nav">
+    @if (!User.Identity.IsAuthenticated)
+    {
+        <li class="nav-item">
+            <a class="nav-link text-dark" asp-area="" asp-page="/Auth/LoginBasic">Login</a>
+        </li>
+@*         <li class="nav-item">
+            <a class="nav-link text-dark" asp-area="" asp-page="/auth/signup">Signup</a>
+        </li> *@
+    }
+    else
+    {
+        <li class="nav-item">
+            <a class="nav-link text-dark" asp-area="" asp-page="/Auth/LogOut">Logout</a>
+        </li>
+    }
+</ul>
