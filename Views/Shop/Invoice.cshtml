@@ -1,0 +1,137 @@
+@model AspnetCoreMvcFull.DTO.Invoice
+@{
+    ViewData["Title"] = "Invoice";
+    var address = ViewBag.Address as AspnetCoreMvcFull.DTO.Address;
+}
+
+<script src="~/js/invoice.js"></script>
+
+<div class="container-xxl flex-grow-1 container-p-y">
+    <h4 class="fw-bold py-3 mb-4">
+        <span class="text-muted fw-light">E-commerce /</span> Invoice
+    </h4>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Invoice #@Model.InvoiceNumber</h5>
+                    <div>
+                        <button class="btn btn-primary" onclick="window.print()">
+                            <i class="ti ti-printer me-1"></i> Print
+                        </button>
+                        <button class="btn btn-outline-primary ms-2" id="downloadPdf">
+                            <i class="ti ti-file-download me-1"></i> Download PDF
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body" id="invoice-content">
+                    <div class="row mb-4">
+                        <div class="col-sm-6 mb-4 mb-sm-0">
+                            <h6 class="mb-3">From:</h6>
+                            <div class="mb-1">
+                                <span class="fw-bold">Sales Mastery</span>
+                            </div>
+                            <div>123 Business Street</div>
+                            <div>Beirut, Lebanon</div>
+                            <div>Email: sales@salesmastery.com</div>
+                            <div>Phone: +961 1 123 456</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <h6 class="mb-3">Bill To:</h6>
+                            <div class="mb-1">
+                                <span class="fw-bold">@ViewBag.CustomerName</span>
+                            </div>
+                            @if (address != null)
+                            {
+                                <div>@address.Street</div>
+                                <div>@address.City, @address.Governorate</div>
+                            }
+                            <div>Email: @ViewBag.CustomerEmail</div>
+                            <div>Phone: @ViewBag.CustomerPhone</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-sm-6 mb-4 mb-sm-0">
+                            <h6 class="mb-3">Invoice Details:</h6>
+                            <div><strong>Invoice Number:</strong> @Model.InvoiceNumber</div>
+                            <div><strong>Invoice Date:</strong> @Model.InvoiceDate.ToDateTime().ToString("MM/dd/yyyy")</div>
+                            <div><strong>Due Date:</strong> @Model.DueDate.ToDateTime().ToString("MM/dd/yyyy")</div>
+                            <div><strong>Status:</strong> <span class="badge bg-@(Model.Status == "Paid" ? "success" : Model.Status == "Pending" ? "warning" : "danger")">@Model.Status</span></div>
+                        </div>
+                        <div class="col-sm-6">
+                            <h6 class="mb-3">Payment Details:</h6>
+                            <div><strong>Payment Method:</strong> Cash on Delivery</div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive mb-4">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th class="text-center">Quantity</th>
+                                    <th class="text-end">Unit Price</th>
+                                    <th class="text-end">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.Items)
+                                {
+                                    <tr>
+                                        <td>@item.ProductName</td>
+                                        <td class="text-center">@item.Quantity</td>
+                                        <td class="text-end">$@item.UnitPrice.ToString("F2")</td>
+                                        <td class="text-end">$@item.Total.ToString("F2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="3" class="text-end"><strong>Subtotal</strong></td>
+                                    <td class="text-end">$@Model.Items.Sum(item => item.Total).ToString("F2")</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" class="text-end"><strong>Delivery Fee</strong></td>
+                                    <td class="text-end">$10.00</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" class="text-end"><strong>Total</strong></td>
+                                    <td class="text-end">$@Model.TotalAmount.ToString("F2")</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Model.Notes))
+                    {
+                        <div class="mb-4">
+                            <h6>Notes:</h6>
+                            <p>@Model.Notes</p>
+                        </div>
+                    }
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="alert alert-info mb-0">
+                                <h6>Thank you for your business!</h6>
+                                <p class="mb-0">For any questions regarding this invoice, please contact our customer support at support@salesmastery.com</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    <script>
+        (document).ready(function() {
+            // PDF download functionality using browser print dialog
+            $('#downloadPdf').on('click', function() {
+                window.print();
+            });
+        });
+    </script>

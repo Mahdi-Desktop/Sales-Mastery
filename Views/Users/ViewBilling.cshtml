@@ -301,7 +301,7 @@
             <form id="editAddressForm" method="post">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="UserId" value="@Model.UserId" />
-                <input type="hidden" id="edit-address-id" name="FirestoreId" />
+                <input type="hidden" id="edit-address-id" name="AddressId" />
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
@@ -576,7 +576,7 @@
 
     // Function to load address data into edit form
     function loadAddressForEdit() {
-        const addressId = '@(ViewBag.BillingAddress != null ? ((AspnetCoreMvcFull.DTO.Address)ViewBag.BillingAddress).FirestoreId : "")';
+        const addressId = '@(ViewBag.BillingAddress != null ? ((AspnetCoreMvcFull.DTO.Address)ViewBag.BillingAddress).AddressId : "")';
 
         if (!addressId) return;
 
@@ -584,7 +584,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data) {
-                    document.getElementById('edit-address-id').value = data.firestoreId;
+                    document.getElementById('edit-address-id').value = data.AddressId;
                     document.getElementById('edit-Country').value = data.country || 'Lebanon';
                     document.getElementById('edit-City').value = data.city || '';
                     document.getElementById('edit-Governorate').value = data.governorate || '';

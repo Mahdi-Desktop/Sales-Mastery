@@ -1,0 +1,21 @@
+<div class="navbar-nav align-items-center">
+    <div class="nav-item d-flex align-items-center">
+        <a href="@Url.Action("Index", "Shop")" class="nav-link">
+            <i class="ti ti-home me-1"></i> Shop
+        </a>
+    </div>
+    <div class="nav-item d-flex align-items-center ms-3">
+        <a href="@Url.Action("Cart", "Shop")" class="nav-link">
+            <i class="ti ti-shopping-cart me-1"></i> Cart
+            <span class="badge bg-primary cart-count">0</span>
+        </a>
+    </div>
+    @if (!string.IsNullOrEmpty(Context.Session.GetString("UserId")))
+    {
+        <div class="nav-item d-flex align-items-center ms-3">
+            <a href="@Url.Action("OrderHistory", "Shop")" class="nav-link">
+                <i class="ti ti-history me-1"></i> Orders
+            </a>
+        </div>
+    }
+</div>

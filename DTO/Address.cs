@@ -1,5 +1,7 @@
 using Google.Cloud.Firestore;
+using Mono.TextTemplating;
 using System;
+using System.Reflection.Emit;
 
 
   namespace AspnetCoreMvcFull.DTO
@@ -8,15 +10,25 @@ using System;
     public class Address
     {
       [FirestoreDocumentId]
-      public string FirestoreId { get; set; }  // Firestore Auto-ID (String)
+      public string AddressId { get; set; }  // Firestore Auto-ID (String)
+    [FirestoreProperty]
+    public string AddressType { get; set; } // e.g., "Home", "Work", "Billing", "Shipping"
 
-      [FirestoreProperty]
-      public int AddressId { get; set; }  // Manually Assigned Integer ID
+    [FirestoreProperty]
+    public string Line1 { get; set; }
 
-      [FirestoreProperty]
+    [FirestoreProperty]
+    public string Line2 { get; set; }
+
+
+    [FirestoreProperty]
       public string Country { get; set; } = "Lebanon";
+    [FirestoreProperty]
+    public string State { get; set; }
+    [FirestoreProperty]
+    public string ZipCode { get; set; } = "0000";
 
-      [FirestoreProperty]
+    [FirestoreProperty]
       public string City { get; set; }
 
       [FirestoreProperty]
@@ -51,7 +63,38 @@ using System;
       public string ShipmentId { get; set; }  // Firestore Document ID
 
       [FirestoreProperty]
-      public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+      public Timestamp CreatedAt { get; set; } 
+    [FirestoreProperty]
+    public Timestamp UpdatedAt { get; set; }
+
+    [FirestoreProperty]
+    public bool IsPrimary { get; set; }
+
+
+
+
+    // Formatted address for display
+    public string FormattedAddress
+    {
+      get
+      {
+        var address = Line1;
+        if (!string.IsNullOrEmpty(Line2))
+          address += ", " + Line2;
+
+        address += ", " + City;
+
+        if (!string.IsNullOrEmpty(State))
+          address += ", " + State;
+
+        address += " " + ZipCode;
+
+        if (!string.IsNullOrEmpty(Country))
+          address += ", " + Country;
+
+        return address;
+      }
     }
+  }
   }
 

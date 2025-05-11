@@ -1,5 +1,12 @@
+@using Microsoft.AspNetCore.Http
+@inject IHttpContextAccessor HttpContextAccessor
+
 @{
-    ViewData["Title"] = "Category List - eCommerce";
+    ViewData["Title"] = "Category & Brand Management";
+    // Explicitly check for "1" string value
+    bool isAdmin = HttpContextAccessor.HttpContext?.Session.GetString("IsAdmin") == "1";
+    bool isAffiliate = HttpContextAccessor.HttpContext?.Session.GetString("IsAffiliate") == "1";
+    bool isCustomer = HttpContextAccessor.HttpContext?.Session.GetString("IsCustomer") == "1";
 }
 
 @section VendorStyles {
@@ -16,6 +23,27 @@
 
 @section PageStyles {
     <link rel="stylesheet" href="~/vendor/css/pages/app-ecommerce.css">
+    <style>
+
+        /* Custom styles to align search and button to the right */
+        .dt-action-buttons {
+            margin-left: auto !important;
+        }
+
+        .dataTables_filter {
+            margin-right: 10px;
+        }
+
+        .card-header {
+            justify-content: flex-end !important;
+        }
+
+        .nav-tabs .nav-link.active {
+            background-color: #fff;
+            border-bottom-color: #fff;
+            color: #696cff;
+        }
+    </style>
 }
 
 @section VendorScripts {
@@ -28,78 +56,172 @@
     <script src="~/vendor/libs/quill/katex.js"></script>
     <script src="~/vendor/libs/quill/quill.js"></script>
     <script src="~/vendor/libs/toastr/toastr.js"></script>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 }
 
-@section PageScripts {
-    <script src="~/js/app-ecommerce-category-list.js"></script>
+@{
+    <script>
+        // Pass Firebase configuration from server to client
+        const firebaseConfig = {
+            apiKey: "@ViewBag.FirebaseApiKey",
+            authDomain: "asp-sales.firebaseapp.com",
+            projectId: "asp-sales",
+            storageBucket: "asp-sales.appspot.com",
+            messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+            appId: "@ViewBag.FirebaseAppId"
+        };
+    </script>
 }
 
-<div class="app-ecommerce-category">
-    <!-- Category List Table -->
-    <div class="card">
-        <div class="card-datatable table-responsive">
-            <table class="datatables-category-list table border-top">
-                <thead>
-                    <tr>
-                        <th></th>
-                        <th></th>
-                        <th>Categories</th>
-                        <th class="text-nowrap text-sm-end">Total Products &nbsp;</th>
-                        <th class="text-nowrap text-sm-end">Total Earning</th>
-                        <th class="text-lg-center">Actions</th>
-                    </tr>
-                </thead>
-            </table>
-        </div>
-    </div>
-    <!-- Offcanvas to add new category -->
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasEcommerceCategoryList" aria-labelledby="offcanvasEcommerceCategoryListLabel">
-        <!-- Offcanvas Header -->
-        <div class="offcanvas-header py-6">
-            <h5 id="offcanvasEcommerceCategoryListLabel" class="offcanvas-title">Add Category</h5>
-            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-        </div>
-        <!-- Offcanvas Body -->
-        <div class="offcanvas-body border-top">
-            <form class="pt-0" id="eCommerceCategoryListForm" onsubmit="return false">
-                <input type="hidden" id="categoryId" name="categoryId" value="" />
-                <!-- Title -->
-                <div class="mb-6">
-                    <label class="form-label" for="ecommerce-category-title">Title</label>
-                    <input type="text" class="form-control" id="ecommerce-category-title" placeholder="Enter category title" name="categoryTitle" aria-label="category title">
+<div class="app-ecommerce">
+    <!-- Tabs navigation -->
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" id="categories-tab" data-bs-toggle="tab" href="#categories" role="tab" aria-controls="categories" aria-selected="true">
+                <i class="ti ti-folder me-1"></i> Categories
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="brands-tab" data-bs-toggle="tab" href="#brands" role="tab" aria-controls="brands" aria-selected="false">
+                <i class="ti ti-building-store me-1"></i> Brands
+            </a>
+        </li>
+    </ul>
+
+    <!-- Tab content -->
+    <div class="tab-content">
+        <!-- Categories Tab -->
+        <div class="tab-pane fade show active" id="categories" role="tabpanel" aria-labelledby="categories-tab">
+            <!-- Category List Table -->
+            <div class="card">
+                <div class="card-datatable table-responsive">
+                    <table class="datatables-category-list table border-top">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th></th>
+                                <th>Category Name</th>
+                                <th class="text-nowrap text-sm-end">Brand</th>
+                                <th class="text-nowrap text-sm-end">Description</th>
+                                <th class="text-lg-center">Actions</th>
+                            </tr>
+                        </thead>
+                    </table>
                 </div>
-                <!-- Slug -->
-                <div class="mb-6">
-                    <label class="form-label" for="ecommerce-category-slug">Slug</label>
-                    <input type="text" id="ecommerce-category-slug" class="form-control" placeholder="Enter slug" aria-label="slug" name="slug">
+            </div>
+
+            <!-- Offcanvas to add new category -->
+            <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasEcommerceCategoryList" aria-labelledby="offcanvasEcommerceCategoryListLabel">
+                <!-- Offcanvas Header -->
+                <div class="offcanvas-header py-6">
+                    <h5 id="offcanvasEcommerceCategoryListLabel" class="offcanvas-title">Add Category</h5>
+                    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
                 </div>
-                <!-- Description -->
-                <div class="mb-6">
-                    <label class="form-label">Description</label>
-                    <div class="form-control p-0 py-1">
-                        <div class="comment-editor border-0" id="ecommerce-category-description">
+                <!-- Offcanvas Body -->
+                <div class="offcanvas-body border-top">
+                    <form class="pt-0" id="eCommerceCategoryListForm" onsubmit="return false">
+                        <input type="hidden" id="categoryId" name="categoryId" value="" />
+                        <!-- Name -->
+                        <div class="mb-6">
+                            <label class="form-label" for="ecommerce-category-name">Name</label>
+                            <input type="text" class="form-control" id="ecommerce-category-name" placeholder="Enter category name" name="categoryName" aria-label="category name">
                         </div>
-                        <div class="comment-toolbar border-0 rounded">
-                            <div class="d-flex justify-content-end">
-                                <span class="ql-formats me-0">
-                                    <button class="ql-bold"></button>
-                                    <button class="ql-italic"></button>
-                                    <button class="ql-underline"></button>
-                                    <button class="ql-list" value="ordered"></button>
-                                    <button class="ql-list" value="bullet"></button>
-                                    <button class="ql-link"></button>
-                                    <button class="ql-image"></button>
-                                </span>
+                        <!-- Brand -->
+                        <div class="mb-6">
+                            <label class="form-label" for="brand-select">Brand</label>
+                            <select id="brand-select" class="form-select" name="brandId">
+                                <option value="">Select Brand</option>
+                                <!-- Brands will be populated dynamically -->
+                            </select>
+                        </div>
+                        <!-- Description -->
+                        <div class="mb-6">
+                            <label class="form-label">Description</label>
+                            <div class="form-control p-0 py-1">
+                                <div class="comment-editor border-0" id="ecommerce-category-description">
+                                </div>
+                                <div class="comment-toolbar border-0 rounded">
+                                    <div class="d-flex justify-content-end">
+                                        <span class="ql-formats me-0">
+                                            <button class="ql-bold"></button>
+                                            <button class="ql-italic"></button>
+                                            <button class="ql-underline"></button>
+                                            <button class="ql-list" value="ordered"></button>
+                                            <button class="ql-list" value="bullet"></button>
+                                            <button class="ql-link"></button>
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                        <!-- Submit and reset -->
+                        <div class="mb-6">
+                            <button type="submit" class="btn btn-primary me-sm-3 me-1 data-submit">Add</button>
+                            <button type="reset" class="btn btn-label-danger" data-bs-dismiss="offcanvas">Discard</button>
+                        </div>
+                    </form>
                 </div>
-                <!-- Submit and reset -->
-                <div class="mb-6">
-                    <button type="submit" class="btn btn-primary me-sm-3 me-1 data-submit">Add</button>
-                    <button type="reset" class="btn btn-label-danger" data-bs-dismiss="offcanvas">Discard</button>
+            </div>
+        </div>
+
+        <!-- Brands Tab -->
+        <div class="tab-pane fade" id="brands" role="tabpanel" aria-labelledby="brands-tab">
+            <!-- Brand List Table -->
+            <div class="card">
+                <div class="card-datatable table-responsive">
+                    <table class="datatables-brand-list table border-top">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th></th>
+                                <th>Brand Name</th>
+                                <th class="text-nowrap text-sm-end">Commission Rate</th>
+                                <th class="text-nowrap text-sm-end">Created Date</th>
+                                <th class="text-lg-center">Actions</th>
+                            </tr>
+                        </thead>
+                    </table>
                 </div>
-            </form>
+            </div>
+
+            <!-- Offcanvas to add new brand -->
+            <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasEcommerceBrandList" aria-labelledby="offcanvasEcommerceBrandListLabel">
+                <!-- Offcanvas Header -->
+                <div class="offcanvas-header py-6">
+                    <h5 id="offcanvasEcommerceBrandListLabel" class="offcanvas-title">Add Brand</h5>
+                    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+                </div>
+                <!-- Offcanvas Body -->
+                <div class="offcanvas-body border-top">
+                    <form class="pt-0" id="eCommerceBrandListForm" onsubmit="return false">
+                        <input type="hidden" id="brandId" name="brandId" value="" />
+                        <!-- Name -->
+                        <div class="mb-6">
+                            <label class="form-label" for="ecommerce-brand-name">Brand Name</label>
+                            <input type="text" class="form-control" id="ecommerce-brand-name" placeholder="Enter brand name" name="brandName" aria-label="brand name" required>
+                        </div>
+                        <!-- Commission Rate -->
+                        <div class="mb-6">
+                            <label class="form-label" for="ecommerce-brand-commission">Commission Rate (%)</label>
+                            <input type="number" class="form-control" id="ecommerce-brand-commission" placeholder="Enter commission rate" name="commissionRate" aria-label="commission rate" min="0" max="100" step="0.5" required>
+                            <small class="text-muted">This rate will apply to all products under this brand</small>
+                        </div>
+                        <!-- Submit and reset -->
+                        <div class="mb-6">
+                            <button type="submit" class="btn btn-primary me-sm-3 me-1 brand-data-submit">Add</button>
+                            <button type="reset" class="btn btn-label-danger" data-bs-dismiss="offcanvas">Discard</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Load the separate JavaScript files for each tab -->
+<script src="~/js/app-ecommerce-category-list.js"></script>
+<script src="~/js/app-ecommerce-brand-list.js"></script>

@@ -16,7 +16,7 @@ namespace AspnetCoreMvcFull.DTO
     public string SKU { get; set; }
 
     [FirestoreProperty]
-    public decimal Price { get; set; }
+    public int Price { get; set; }
 
     [FirestoreProperty]
     public int Stock { get; set; }

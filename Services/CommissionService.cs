@@ -21,7 +21,31 @@ namespace AspnetCoreMvcFull.Services
         _logger = logger;
       }
 
-      public async Task<List<Commission>> GetCommissionsByAffiliateIdAsync(string affiliateId)
+    public async Task<List<Commission>> GetAllCommissionsAsync()
+    {
+      return await GetAllAsync();
+    }
+
+    public async Task<List<Commission>> GetRecentCommissionsByAffiliateIdAsync(string affiliateId, int limit)
+    {
+      var query = _collection
+          .WhereEqualTo("AffiliateId", affiliateId)
+          .OrderByDescending("CreatedAt")
+          .Limit(limit);
+
+      var snapshot = await query.GetSnapshotAsync();
+
+      var commissions = new List<Commission>();
+      foreach (var doc in snapshot.Documents)
+      {
+        var commission = doc.ConvertTo<Commission>();
+        commission.CommissionId = doc.Id;
+        commissions.Add(commission);
+      }
+
+      return commissions;
+    }
+    public async Task<List<Commission>> GetCommissionsByAffiliateIdAsync(string affiliateId)
       {
         try
         {
@@ -69,7 +93,7 @@ namespace AspnetCoreMvcFull.Services
         }
       }
 
-      public async Task<decimal> GetTotalCommissionsByAffiliateIdAsync(string affiliateId)
+      public async Task<int> GetTotalCommissionsByAffiliateIdAsync(string affiliateId)
       {
         try
         {
@@ -83,7 +107,7 @@ namespace AspnetCoreMvcFull.Services
         }
       }
 
-      public async Task<decimal> GetUnpaidCommissionsByAffiliateIdAsync(string affiliateId)
+      public async Task<int> GetUnpaidCommissionsByAffiliateIdAsync(string affiliateId)
       {
         try
         {
@@ -189,7 +213,20 @@ namespace AspnetCoreMvcFull.Services
         }
       }
 
-      public async Task<CommissionSummary> GetAffiliateSummaryAsync(string affiliateId)
+    public async Task<int> GetTotalEarningsAsync(string affiliateId)
+    {
+      var commissions = await GetCommissionsByAffiliateIdAsync(affiliateId);
+      return commissions.Sum(c => c.Amount);
+    }
+
+
+    public async Task<int> GetPendingEarningsAsync(string affiliateId)
+    {
+      var commissions = await GetCommissionsByAffiliateIdAsync(affiliateId);
+      return commissions.Where(c => c.Status == "pending").Sum(c => c.Amount);
+    }
+
+    public async Task<CommissionSummary> GetAffiliateSummaryAsync(string affiliateId)
       {
         try
         {

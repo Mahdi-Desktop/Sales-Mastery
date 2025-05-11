@@ -1,0 +1,156 @@
+@using Newtonsoft.Json
+@{
+  ViewData["Title"] = "Shop";
+  var userId = Context.Session.GetString("UserId") ?? "";
+  var isAdmin = Context.Session.GetString("IsAdmin") == "1";
+  var isAffiliate = Context.Session.GetString("IsAffiliate") == "1";
+  var isCustomer = Context.Session.GetString("IsCustomer") == "1";
+
+  var userDataObj = new
+  {
+    userId = userId,
+    isAdmin = isAdmin,
+    isAffiliate = isAffiliate,
+    isCustomer = isCustomer
+  };
+
+  var userDataJson = JsonConvert.SerializeObject(userDataObj);
+}
+
+<script id="user-data" type="application/json">
+    @Html.Raw(userDataJson)
+</script>
+
+<script src="~/js/shop.js" defer></script>
+
+<style>
+  .price-slider {
+    width: 100%;
+    margin-top: 10px;
+  }
+
+  .product-card {
+    transition: transform 0.3s ease;
+    height: 100%;
+  }
+
+  .product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  .product-image {
+    height: 200px;
+    object-fit: contain;
+  }
+
+  .discount-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+  }
+</style>
+
+<div class="container-xxl flex-grow-1 container-p-y">
+  <div class="row">
+    <!-- Filters Sidebar -->
+    <div class="col-xl-3 col-lg-4 col-md-4">
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Filters</h5>
+          <button id="resetFilters" class="btn btn-sm btn-outline-primary">Reset All</button>
+        </div>
+        <div class="card-body">
+          <form id="filterForm">
+            <!-- Search -->
+            <div class="mb-4">
+              <label class="form-label" for="searchQuery">Search</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="ti ti-search"></i></span>
+                <input type="text" class="form-control" id="searchQuery" placeholder="Search products...">
+              </div>
+            </div>
+
+            <!-- Price Range -->
+            <div class="mb-4">
+              <label class="form-label">Price Range</label>
+              <div class="d-flex justify-content-between mb-2">
+                <span>$<span id="minPriceDisplay">0</span></span>
+                <span>$<span id="maxPriceDisplay">1000</span></span>
+              </div>
+              <div class="price-slider">
+                <input type="range" class="form-range" id="minPrice" min="0" max="1000" value="0">
+                <input type="range" class="form-range" id="maxPrice" min="0" max="1000" value="1000">
+              </div>
+            </div>
+
+            <!-- Categories -->
+            <div class="mb-4">
+              <label class="form-label">Categories</label>
+              <div id="categoryContainer">
+                <!-- Categories will be loaded by JavaScript -->
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                  <span class="visually-hidden">Loading categories...</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sort By -->
+            <div class="mb-4">
+              <label class="form-label" for="sortBy">Sort By</label>
+              <select class="form-select" id="sortBy">
+                <option value="name">Name</option>
+                <option value="price">Price</option>
+                <option value="newest">Newest</option>
+              </select>
+            </div>
+
+            <!-- Sort Direction -->
+            <div class="mb-4">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="ascending" id="ascending" value="true" checked>
+                <label class="form-check-label" for="ascending">Ascending</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="ascending" id="descending" value="false">
+                <label class="form-check-label" for="descending">Descending</label>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Products Grid -->
+    <div class="col-xl-9 col-lg-8 col-md-8">
+      <!-- Products count and view options -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <p class="mb-0">Showing products</p>
+            <div class="d-flex">
+              <a href="/Shop/Cart" class="btn btn-primary me-3">
+                <i class="ti ti-shopping-cart me-2"></i>
+                Cart <span class="badge bg-white text-primary ms-1 cart-count">0</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Products grid -->
+      <div id="productsContainer" class="row g-4">
+        <!-- Products will be loaded by JavaScript -->
+        <div class="col-12 text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading products...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

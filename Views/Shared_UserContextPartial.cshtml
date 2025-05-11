@@ -1,0 +1,35 @@
+@using Microsoft.AspNetCore.Http
+@inject IHttpContextAccessor HttpContextAccessor
+
+@{
+    var userId = HttpContextAccessor.HttpContext?.Session.GetString("UserId") ?? "";
+    var isAdmin = HttpContextAccessor.HttpContext?.Session.GetString("IsAdmin") == "1";
+    var isAffiliate = HttpContextAccessor.HttpContext?.Session.GetString("IsAffiliate") == "1";
+    var isCustomer = HttpContextAccessor.HttpContext?.Session.GetString("IsCustomer") == "1";
+
+    var userContext = new
+    {
+        userId = userId,
+        isAdmin = isAdmin,
+        isAffiliate = isAffiliate,
+        isCustomer = isCustomer
+    };
+
+    var firebaseConfig = new
+    {
+        apiKey = ViewBag.FirebaseApiKey,
+        authDomain = $"{ViewBag.FirebaseProjectId}.firebaseapp.com",
+        projectId = ViewBag.FirebaseProjectId,
+        storageBucket = ViewBag.FirebaseStorageBucket,
+        messagingSenderId = ViewBag.FirebaseMessagingSenderId,
+        appId = ViewBag.FirebaseAppId
+    };
+}
+
+<script id="user-context" type="application/json">
+    @Html.Raw(Json.Serialize(userContext))
+</script>
+
+<script id="firebase-config" type="application/json">
+    @Html.Raw(Json.Serialize(firebaseConfig))
+</script>

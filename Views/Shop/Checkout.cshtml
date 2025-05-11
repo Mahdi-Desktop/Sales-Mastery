@@ -1,0 +1,131 @@
+@{
+    ViewData["Title"] = "Checkout";
+    var userId = Context.Session.GetString("UserId") ?? "";
+    var isAdmin = Context.Session.GetString("IsAdmin") == "1";
+    var isAffiliate = Context.Session.GetString("IsAffiliate") == "1";
+    var isCustomer = Context.Session.GetString("IsCustomer") == "1";
+
+    var userDataObj = new
+    {
+        userId = userId,
+        isAdmin = isAdmin,
+        isAffiliate = isAffiliate,
+        isCustomer = isCustomer
+    };
+
+    var userDataJson = Newtonsoft.Json.JsonConvert.SerializeObject(userDataObj);
+}
+
+<script id="user-data" type="application/json">
+    @Html.Raw(userDataJson)
+</script>
+
+<script src="~/js/shop-common.js"></script>
+<script src="~/js/checkout.js"></script>
+
+<div class="container-xxl flex-grow-1 container-p-y">
+    <h4 class="fw-bold py-3 mb-4">
+        <span class="text-muted fw-light">E-commerce /</span> Checkout
+    </h4>
+
+    <div class="row">
+        <!-- Checkout Form -->
+        <div class="col-lg-8 col-md-7 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Shipping Information</h5>
+                </div>
+                <div class="card-body">
+                    <form id="checkoutForm">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label for="address" class="form-label">Address</label>
+                                <input type="text" class="form-control" id="address" placeholder="1234 Main St" required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="city" class="form-label">City</label>
+                                <input type="text" class="form-control" id="city" required>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="state" class="form-label">State/Province</label>
+                                <input type="text" class="form-control" id="state" required>
+                            </div>
+
+                            <div class="col-md-2">
+                                <label for="zipCode" class="form-label">Zip Code</label>
+                                <input type="text" class="form-control" id="zipCode">
+                            </div>
+
+                            <div class="col-12">
+                                <label for="phone" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="phone" required>
+                            </div>
+
+                            <div class="col-12 mt-4">
+                                <h6 class="mb-3">Payment Method</h6>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="paymentMethod" id="cashOnDelivery" value="Cash on Delivery" checked>
+                                    <label class="form-check-label" for="cashOnDelivery">
+                                        Cash on Delivery
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="col-12 mt-4">
+                                <button type="submit" id="submitCheckout" class="btn btn-primary w-100">
+                                    <i class="ti ti-check me-1"></i> Place Order
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Summary -->
+        <div class="col-lg-4 col-md-5">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Order Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-borderless">
+                            <tbody id="checkoutItems">
+                                <tr>
+                                    <td colspan="2" class="text-center py-3">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading items...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot class="border-top">
+                                <tr>
+                                    <td class="text-start">Subtotal</td>
+                                    <td class="text-end">$<span id="subtotal">0.00</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-start">Shipping</td>
+                                    <td class="text-end">$4.00</td>
+                                </tr>
+                                <tr class="fw-bold">
+                                    <td class="text-start">Total</td>
+                                    <td class="text-end">$<span id="total">0.00</span></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <div class="mt-3">
+                        <a href="@Url.Action("Cart")" class="btn btn-outline-primary w-100">
+                            <i class="ti ti-arrow-left me-1"></i> Back to Cart
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

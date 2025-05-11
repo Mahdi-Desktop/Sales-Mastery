@@ -10,8 +10,11 @@ using System;
 using Google.Cloud.Firestore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+//using AspnetCoreMvcFull.Attributes;
+
 
 namespace AspnetCoreMvcFull.Controllers;
+
 
 public class UsersController : Controller
 {
@@ -132,6 +135,22 @@ public class UsersController : Controller
     return RedirectToAction(nameof(List));
   }
 
+  /*  public async Task<IActionResult> ViewAccount(string id)
+    {
+      if (string.IsNullOrEmpty(id)) return RedirectToAction("List");
+
+      var user = await _userService.GetByIdAsync(id);
+      if (user == null) return NotFound();
+
+      ViewBag.Invoices = await _invoiceService.GetInvoicesByUserIdAsync(id);
+      if (user.Role == "Affiliate")
+      {
+        ViewBag.ReferencedUsers = await _customerService.GetCustomersByReferrerAsync(id);
+        ViewBag.CommissionHistory = await GetCommissionHistoryForAffiliate(id);
+      }
+
+      return View(user);
+    }*/
   public async Task<IActionResult> ViewAccount(string id)
   {
     if (string.IsNullOrEmpty(id)) return RedirectToAction("List");
@@ -140,6 +159,9 @@ public class UsersController : Controller
     if (user == null) return NotFound();
 
     ViewBag.Invoices = await _invoiceService.GetInvoicesByUserIdAsync(id);
+    // Add this line to populate ViewBag.Addresses
+    ViewBag.Addresses = await _addressService.GetAddressesByUserIdAsync(id);
+
     if (user.Role == "Affiliate")
     {
       ViewBag.ReferencedUsers = await _customerService.GetCustomersByReferrerAsync(id);
@@ -148,6 +170,7 @@ public class UsersController : Controller
 
     return View(user);
   }
+
   public async Task<IActionResult> ViewSecurity(string id)
   {
     if (string.IsNullOrEmpty(id)) return RedirectToAction("List");
@@ -158,7 +181,32 @@ public class UsersController : Controller
     return View(user);
   }
 
+  [HttpGet]
+  public async Task<IActionResult> CreateTestUserWithPhone()
+  {
+    try
+    {
+      var user = new User
+      {
+        FirstName = "Test",
+        LastName = "User",
+        Email = "testuser@example.com",
+        Password = _userService.HashPassword("Test123!"),
+        PhoneNumber = "+96178854350", // Test phone number
+        Role = "3", // Customer
+        CreatedAt = Timestamp.FromDateTime(DateTime.UtcNow),
+        UpdatedAt = Timestamp.FromDateTime(DateTime.UtcNow)
+      };
 
+      var userId = await _userService.AddUserAsync(user);
+
+      return Content($"Test user created with ID: {userId} and phone: +96178854350");
+    }
+    catch (Exception ex)
+    {
+      return Content($"Error creating test user: {ex.Message}");
+    }
+  }
   private async Task<List<dynamic>> GetCommissionHistoryForAffiliate(string affiliateId)
   {
     try

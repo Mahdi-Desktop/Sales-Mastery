@@ -1,0 +1,141 @@
+@model List<AspnetCoreMvcFull.DTO.Commission>
+@{
+    ViewData["Title"] = "Commission History";
+}
+
+@section VendorScripts {
+<script src="~/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+}
+
+@section PageScripts {
+<script src="~/js/affiliate-commissions.js"></script>
+}
+
+@* ************** Content ************** *@
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Commission History</h5>
+                <div class="d-flex align-items-center">
+                    <select id="statusFilter" class="form-select me-2" style="width: 150px;">
+                        <option value="">All Status</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Paid">Paid</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                    <input type="text" id="searchBox" class="form-control" placeholder="Search...">
+                </div>
+            </div>
+            <div class="table-responsive text-nowrap">
+                <table class="table datatable-commission">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Amount</th>
+                            <th>Rate</th>
+                            <th>Status</th>
+                            <th>Paid Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            @foreach (var commission in Model)
+                            {
+                                <tr>
+                                    <td>@commission.CreatedAt.ToDateTime().ToString("MMM dd, yyyy")</td>
+                                    <td>#@commission.OrderId</td>
+                                    <td>@commission.CustomerId</td>
+                                    <td>$@commission.Amount.ToString("F2")</td>
+                                    <td>@commission.Rate%</td>
+                                    <td>
+                                        @switch (commission.Status)
+                                        {
+                                            case "Paid":
+                                                <span class="badge bg-label-success">Paid</span>
+                                                break;
+                                            case "Pending":
+                                                <span class="badge bg-label-warning">Pending</span>
+                                                break;
+                                            case "Cancelled":
+                                                <span class="badge bg-label-danger">Cancelled</span>
+                                                break;
+                                            default:
+                                                <span class="badge bg-label-secondary">@commission.Status</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        @(commission.PaidAt.HasValue 
+                                            ? commission.PaidAt.Value.ToDateTime().ToString("MMM dd, yyyy") 
+                                            : "-")
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center">No commission records found</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer">
+                <div class="row">
+                    <div class="col-12 col-md-6">
+                        <div class="alert alert-info mb-0">
+                            <div class="d-flex">
+                                <i class="ti ti-info-circle me-2 mt-1"></i>
+                                <div>
+                                    <h6 class="alert-heading mb-1">Commission Information</h6>
+                                    <p class="mb-0">Commissions are processed after customer orders are fulfilled. Pending commissions will be paid according to the payment schedule.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 mt-3 mt-md-0">
+                        <div class="card bg-label-primary h-100 mb-0">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="mb-0">Need Help?</h5>
+                                    <p class="mb-0">Contact our affiliate support team</p>
+                                </div>
+                                <a href="mailto:affiliate-support@example.com" class="btn btn-primary">Contact Support</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    <script>
+        (function () {
+            var table = $('.datatable-commission').DataTable({
+                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
+                lengthMenu: [10, 25, 50, 100],
+                language: {
+                    search: '_INPUT_',
+                    searchPlaceholder: 'Search...'
+                }
+            });
+
+            // Apply custom search
+            $('#searchBox').on('keyup', function () {
+                table.search(this.value).draw();
+            });
+
+            // Apply status filter
+            $('#statusFilter').on('change', function () {
+                var status = $(this).val();
+                table.column(5).search(status).draw();
+            });
+        });
+    </script>

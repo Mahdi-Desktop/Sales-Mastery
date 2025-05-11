@@ -13,7 +13,7 @@ namespace AspnetCoreMvcFull.DTO
     public string Name { get; set; }
 
     [FirestoreProperty]
-    public decimal CommissionRate { get; set; } // Default commission rate for all products of this brand
+    public int CommissionRate { get; set; } // Default commission rate for all products of this brand
 
     [FirestoreProperty]
     public Timestamp CreatedAt { get; set; } = Timestamp.FromDateTime(DateTime.UtcNow);

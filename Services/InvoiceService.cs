@@ -68,7 +68,7 @@ namespace AspnetCoreMvcFull.Services
           }
         }
     */
-    public async Task<IEnumerable<Invoice>> GetInvoicesByUserIdAsync(string userId)
+    /*public async Task<IEnumerable<Invoice>> GetInvoicesByUserIdAsync(string userId)
     {
       try
       {
@@ -97,6 +97,24 @@ namespace AspnetCoreMvcFull.Services
         _logger.LogError(ex, $"Error getting invoices for user with ID {userId}");
         // Return empty list instead of throwing
         return new List<Invoice>();
+      }
+    }*/
+    public async Task<List<Invoice>> GetInvoicesByUserIdAsync(string userId)
+    {
+      try
+      {
+        var query = _collection.WhereEqualTo("UserId", userId);
+        var snapshot = await query.GetSnapshotAsync();
+
+        return snapshot.Documents
+            .Select(doc => doc.ConvertTo<Invoice>())
+            .OrderByDescending(i => i.CreatedAt)
+            .ToList();
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, $"Error getting invoices for user {userId}");
+        throw;
       }
     }
 
@@ -244,5 +262,143 @@ namespace AspnetCoreMvcFull.Services
         return false;
       }
     }
+
+    public async Task<Invoice> CreateInvoiceForOrderAsync(string orderId, string userId, int totalAmount)
+    {
+      try
+      {
+        // Generate invoice number
+        string invoiceNumber = $"INV-{DateTime.UtcNow:yyyyMMdd}-{new Random().Next(1000, 9999)}";
+
+        // Create invoice
+        var invoice = new Invoice
+        {
+          UserId = userId,
+          InvoiceNumber = invoiceNumber,
+          TotalAmount = totalAmount,
+          Status = "Pending", // Initially set to pending
+          Notes = $"Invoice for order {orderId}",
+          CreatedAt = Timestamp.FromDateTime(DateTime.UtcNow),
+          UpdatedAt = Timestamp.FromDateTime(DateTime.UtcNow),
+          InvoiceDate = Timestamp.FromDateTime(DateTime.UtcNow),
+          DueDate = Timestamp.FromDateTime(DateTime.UtcNow.AddDays(7)) // Due in 7 days
+        };
+
+        // Create invoice items based on order details
+        var orderDetails = await _firestoreDb.Collection("orderDetails")
+            .WhereEqualTo("OrderId", orderId)
+            .GetSnapshotAsync();
+
+        invoice.Items = new List<InvoiceItem>();
+
+        foreach (var doc in orderDetails.Documents)
+        {
+          var detail = doc.ConvertTo<OrderDetail>();
+
+          // Get product details
+          var productSnapshot = await _firestoreDb.Collection("products")
+              .Document(detail.ProductId)
+              .GetSnapshotAsync();
+
+          string productName = detail.ProductName;
+          string productSKU = detail.SKU ?? "";
+
+          if (productSnapshot.Exists)
+          {
+            var product = productSnapshot.ConvertTo<Product>();
+            productName = product.Name;
+            productSKU = product.SKU ?? "";
+          }
+
+          var invoiceItem = new InvoiceItem
+          {
+            ProductId = detail.ProductId,
+            ProductName = productName,
+            ProductSKU = productSKU,
+            Description = $"{productName} x {detail.Quantity}",
+            Quantity = detail.Quantity,
+            UnitPrice = detail.Price,
+            Discount = 0,
+            Tax = 0,
+            Total = detail.SubTotal
+          };
+
+          invoice.Items.Add(invoiceItem);
+        }
+
+        // Save invoice
+        string invoiceId = await AddAsync(invoice);
+        invoice.InvoiceId = invoiceId;
+
+        // Link invoice to order
+        await _firestoreDb.Collection("orders")
+            .Document(orderId)
+            .UpdateAsync("InvoiceId", invoiceId);
+
+        // Add invoice ID to user's invoice list
+        await _firestoreDb.Collection("users")
+            .Document(userId)
+            .UpdateAsync("InvoiceId", FieldValue.ArrayUnion(invoiceId));
+
+        return invoice;
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, $"Error creating invoice for order {orderId}");
+        throw;
+      }
+    }
+
+    public async Task<Invoice> GetInvoiceByOrderIdAsync(string orderId)
+    {
+      try
+      {
+        // Get the invoice ID from the order document
+        var orderDoc = await _firestoreDb.Collection("orders").Document(orderId).GetSnapshotAsync();
+        if (!orderDoc.Exists || !orderDoc.ContainsField("InvoiceId"))
+          return null;
+
+        string invoiceId = orderDoc.GetValue<string>("InvoiceId");
+        if (string.IsNullOrEmpty(invoiceId))
+          return null;
+
+        // Get the invoice
+        return await GetByIdAsync(invoiceId);
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, $"Error getting invoice for order {orderId}");
+        return null;
+      }
+    }
+
+
+
+    private async Task<int> GetNextInvoiceNumberAsync()
+    {
+      try
+      {
+        var snapshot = await _collection.OrderByDescending("InvoiceNumber").Limit(1).GetSnapshotAsync();
+        if (snapshot.Count == 0)
+          return 1;
+
+        var lastInvoice = snapshot.Documents[0].ConvertTo<Invoice>();
+        string lastInvoiceNumber = lastInvoice.InvoiceNumber;
+
+        // Extract the numeric part at the end of the invoice number
+        if (lastInvoiceNumber != null && int.TryParse(lastInvoiceNumber.Split('-').Last(), out int lastNumber))
+        {
+          return lastNumber + 1;
+        }
+
+        return 1;
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error getting next invoice number");
+        return 1;
+      }
+    }
+
   }
 }

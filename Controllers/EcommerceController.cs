@@ -3,7 +3,10 @@ using AspnetCoreMvcFull.Models;
 using AspnetCoreMvcFull.Services;
 using AspnetCoreMvcFull.DTO;
 using Microsoft.Extensions.Caching.Memory;
-
+using Google.Cloud.Firestore;
+using System.Configuration;
+//using AspnetCoreMvcFull.Attributes;
+using Microsoft.Extensions.Configuration;
 namespace AspnetCoreMvcFull.Controllers;
 
 public class EcommerceController : Controller
@@ -12,18 +15,25 @@ public class EcommerceController : Controller
   private readonly BrandService _brandService;
   private readonly CategoryService _categoryService;
   private readonly IMemoryCache _cache;
+  private readonly object _logger;
+  private readonly IConfiguration _configuration;
 
   public EcommerceController(
       ProductService productService,
       BrandService brandService,
       CategoryService categoryService,
-       IMemoryCache cache)
+      ILogger<EcommerceController> logger,
+       IMemoryCache cache,
+       IConfiguration configuration)
   {
     _productService = productService;
     _brandService = brandService;
     _categoryService = categoryService;
     _cache = cache;
+    _logger = logger;
+    _configuration = configuration;
   }
+
 
   /* public async Task<IActionResult> GetProductsJson()
    {
@@ -80,36 +90,109 @@ public class EcommerceController : Controller
     }
   }
 
+  /*  public async Task<IActionResult> GetProductsJson()
+    {
+      try
+      {
+        var products = await _productService.GetAllProducts();
+        System.Diagnostics.Debug.WriteLine($"API - Products count: {products.Count}");
+
+        var result = products.Select(p => new {
+          productId = p.ProductId,
+          name = p.Name,
+          sku = p.SKU,
+          price = p.Price,
+          discount = p.Discount,
+          stock = p.Stock,
+          commission = p.Commission,
+          categoryId = p.CategoryId,
+          brandId = p.BrandId,
+          // Improved image URL conversion
+          image = p.Image != null && p.Image.Any()
+                ? p.Image.Select(img => ConvertStorageUrlToHttpUrl(img)).Where(url => !string.IsNullOrEmpty(url)).ToList()
+                : new List<string>() { "/assets/img/elements/1.jpg" } // Default image if none available
+        }).ToList();
+
+        System.Diagnostics.Debug.WriteLine($"API - Result count: {result.Count()}");
+        return Json(result);
+      }
+      catch (Exception ex)
+      {
+        System.Diagnostics.Debug.WriteLine($"API Error: {ex.Message}");
+        return Json(new { error = ex.Message });
+      }
+    }
+  */
+  /*  public async Task<IActionResult> GetProductsJson()
+    {
+      try
+      {
+        var products = await _productService.GetAllProducts();
+        System.Diagnostics.Debug.WriteLine($"API - Products count: {products.Count}");
+
+        var result = products.Select(p => new {
+          productId = p.ProductId,
+          name = p.Name,
+          sku = p.SKU,
+          price = p.Price,
+          discount = p.Discount ?? 0,
+          stock = p.Stock,
+          commission = p.Commission,
+          categoryId = p.CategoryId,
+          brandId = p.BrandId,
+          // Improved image URL conversion
+          image = p.Image != null && p.Image.Any()
+                ? p.Image.Select(img => ConvertStorageUrlToHttpUrl(img)).Where(url => !string.IsNullOrEmpty(url)).ToList()
+                : new List<string>() { "/assets/img/elements/1.jpg" } // Default image if none available
+        }).ToList();
+
+        System.Diagnostics.Debug.WriteLine($"API - Result count: {result.Count()}");
+        return Json(result);
+      }
+      catch (Exception ex)
+      {
+        System.Diagnostics.Debug.WriteLine($"API Error: {ex.Message}");
+        return Json(new { error = ex.Message });
+      }
+    }
+  */
+
   public async Task<IActionResult> GetProductsJson()
   {
     try
     {
+
       var products = await _productService.GetAllProducts();
-      System.Diagnostics.Debug.WriteLine($"API - Products count: {products.Count}");
+
+
+      // Add detailed logging for the first product to troubleshoot
+      if (products != null && products.Count > 0)
+      {
+        var firstProduct = products[0];
+       
+      }
 
       var result = products.Select(p => new {
         productId = p.ProductId,
         name = p.Name,
-        sku = p.SKU,
-        price = p.Price,
+        sku = p.SKU ?? "",
+        price = (double)p.Price, // Ensure using the correct type
         discount = p.Discount,
         stock = p.Stock,
         commission = p.Commission,
         categoryId = p.CategoryId,
         brandId = p.BrandId,
-        // Improved image URL conversion
         image = p.Image != null && p.Image.Any()
-              ? p.Image.Select(img => ConvertStorageUrlToHttpUrl(img)).Where(url => !string.IsNullOrEmpty(url)).ToList()
-              : new List<string>() { "/assets/img/elements/1.jpg" } // Default image if none available
+              ? p.Image
+              : new List<string> { "/assets/img/elements/1.jpg" }
       }).ToList();
 
-      System.Diagnostics.Debug.WriteLine($"API - Result count: {result.Count()}");
       return Json(result);
     }
     catch (Exception ex)
     {
-      System.Diagnostics.Debug.WriteLine($"API Error: {ex.Message}");
-      return Json(new { error = ex.Message });
+
+      return Json(new { error = ex.Message, stackTrace = ex.StackTrace });
     }
   }
 
@@ -203,6 +286,7 @@ public class EcommerceController : Controller
       return "/assets/img/elements/1.jpg";
     }
   */
+
   /*  public async Task<IActionResult> ProductAdd()
     {
       try
@@ -264,7 +348,7 @@ public class EcommerceController : Controller
 
       return View(product);
     }*/
-  public async Task<IActionResult> ProductAdd()
+/*  public async Task<IActionResult> ProductAdd()
   {
     try
     {
@@ -273,10 +357,10 @@ public class EcommerceController : Controller
 
       // Debug information to verify data is being loaded
       System.Diagnostics.Debug.WriteLine($"Loaded {brands.Count} brands");
-      foreach (var brand in brands)
-      {
-        System.Diagnostics.Debug.WriteLine($"Brand: {brand.BrandId} - {brand.Name}");
-      }
+      //foreach (var brand in brands)
+      //{
+      //  System.Diagnostics.Debug.WriteLine($"Brand: {brand.BrandId} - {((AspnetCoreMvcFull.DTO.Brand)brand).Name}");
+      //}
 
       System.Diagnostics.Debug.WriteLine($"Loaded {categories.Count} categories");
       foreach (var category in categories)
@@ -301,18 +385,49 @@ public class EcommerceController : Controller
   {
     try
     {
-      System.Diagnostics.Debug.WriteLine($"Received product data: Name={product.Name}, BrandId={product.BrandId}, CategoryId={product.CategoryId}, Stock={product.Stock}");
+      System.Diagnostics.Debug.WriteLine($"Received product data: Name={product.Name}, BrandId={product.BrandId}, CategoryId={product.CategoryId}, Price={product.Price}, Stock={product.Stock}");
       System.Diagnostics.Debug.WriteLine($"Images JSON: {imagesJson}");
+
+      // Manually check for required fields
+      if (string.IsNullOrEmpty(product.Name))
+      {
+        ModelState.AddModelError("Name", "Name is required");
+      }
+
+      if (product.Price <= 0)
+      {
+        ModelState.AddModelError("Price", "Price must be greater than zero");
+      }
+
+      // Only validate stock if you require it to be positive
+      if (product.Stock < 0)
+      {
+        ModelState.AddModelError("Stock", "Stock cannot be negative");
+      }
+
+      // Allow empty BrandId and CategoryId if needed
+      // Or validate them like this:
+      *//*
+      if (string.IsNullOrEmpty(product.BrandId))
+      {
+        ModelState.AddModelError("BrandId", "Please select a brand");
+      }
+
+      if (string.IsNullOrEmpty(product.CategoryId))
+      {
+        ModelState.AddModelError("CategoryId", "Please select a category");
+      }
+      *//*
 
       if (ModelState.IsValid)
       {
-        // Ensure stock is set properly
-        if (product.Stock <= 0)
+        // Set ProductId if not provided
+        if (string.IsNullOrEmpty(product.ProductId))
         {
-          product.Stock = 0;
+          product.ProductId = Guid.NewGuid().ToString();
         }
 
-        // If brand is selected, get the commission rate from the brand
+        // Set Commission from brand
         if (!string.IsNullOrEmpty(product.BrandId))
         {
           var brand = await _brandService.GetByIdAsync(product.BrandId);
@@ -321,12 +436,24 @@ public class EcommerceController : Controller
             product.Commission = (int)brand.CommissionRate;
             System.Diagnostics.Debug.WriteLine($"Set commission to {product.Commission} from brand {brand.Name}");
           }
+          else
+          {
+            // Default commission if brand not found
+            product.Commission = 0;
+            System.Diagnostics.Debug.WriteLine($"Brand not found, setting default commission to 0");
+          }
+        }
+        else
+        {
+          // Default commission if no brand selected
+          product.Commission = 0;
         }
 
         // Set timestamps
-        product.CreatedAt = Google.Cloud.Firestore.Timestamp.FromDateTime(DateTime.UtcNow);
-        product.UpdatedAt = Google.Cloud.Firestore.Timestamp.FromDateTime(DateTime.UtcNow);
+        product.CreatedAt = Timestamp.FromDateTime(DateTime.UtcNow);
+        product.UpdatedAt = Timestamp.FromDateTime(DateTime.UtcNow);
 
+        // Create product with images
         await _productService.CreateProductFromForm(product, imagesJson);
 
         TempData["SuccessMessage"] = "Product created successfully!";
@@ -347,6 +474,7 @@ public class EcommerceController : Controller
     catch (Exception ex)
     {
       System.Diagnostics.Debug.WriteLine($"Error creating product: {ex.Message}");
+      System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
       ModelState.AddModelError("", $"Error creating product: {ex.Message}");
     }
 
@@ -355,20 +483,63 @@ public class EcommerceController : Controller
     ViewBag.Categories = await _categoryService.GetAllCategoriesAsync();
 
     return View(product);
-  }
+  }*/
 
-  public async Task<IActionResult> ProductList()
+  public IActionResult ProductAdd()
   {
-    var products = await _productService.GetAllProducts();
+    // Pass Firebase configuration to the view
+    ViewBag.FirebaseApiKey = _configuration["Firebase:ApiKey"];
+    ViewBag.FirebaseMessagingSenderId = _configuration["Firebase:MessagingSenderId"] ?? "";
+    ViewBag.FirebaseAppId = _configuration["Firebase:AppId"] ?? "";
+    ViewBag.FirebaseProjectId = _configuration["Firebase:ProjectId"] ?? "";
+    ViewBag.FirebaseStorageBucket = _configuration["Firebase:StorageBucket"] ?? "asp-sales.appspot.com";
 
-    // Calculate statistics for the dashboard
-    ViewBag.TotalProducts = products.Count;
-    ViewBag.InStockProducts = products.Count(p => p.Stock > 0);
-    ViewBag.OutOfStockProducts = products.Count(p => p.Stock <= 0);
-    ViewBag.TotalValue = products.Sum(p => p.Price * p.Stock);
-
-    return View(products);
+    return View();
   }
+  public IActionResult ProductEdit(string id)
+  {
+    if (string.IsNullOrEmpty(id))
+    {
+      return RedirectToAction("ProductList");
+    }
+
+    // Pass Firebase configuration to the view
+    ViewBag.FirebaseApiKey = _configuration["Firebase:ApiKey"];
+    ViewBag.FirebaseMessagingSenderId = _configuration["Firebase:MessagingSenderId"] ?? "";
+    ViewBag.FirebaseAppId = _configuration["Firebase:AppId"] ?? "";
+    ViewBag.FirebaseProjectId = _configuration["Firebase:ProjectId"] ?? "";
+    ViewBag.FirebaseStorageBucket = _configuration["Firebase:StorageBucket"] ?? "asp-sales.appspot.com";
+
+    // Pass the product ID to the view
+    ViewBag.ProductId = id;
+
+    return View("ProductAdd");
+  }
+
+  //[RoleRequirement("Admin", "Affiliate")]
+  public IActionResult ProductList()
+  {
+    // Pass Firebase configuration to the view
+    ViewBag.FirebaseApiKey = _configuration["Firebase:ApiKey"];
+    ViewBag.FirebaseMessagingSenderId = _configuration["Firebase:MessagingSenderId"] ?? "";
+    ViewBag.FirebaseAppId = _configuration["Firebase:AppId"] ?? "";
+    ViewBag.FirebaseProjectId = _configuration["Firebase:ProjectId"] ?? "";
+    ViewBag.FirebaseStorageBucket = _configuration["Firebase:StorageBucket"] ?? "asp-sales.appspot.com";
+
+    return View();
+  }
+  /*  public async Task<IActionResult> ProductList()
+    {
+      var products = await _productService.GetAllProducts();
+
+      // Calculate statistics for the dashboard
+      ViewBag.TotalProducts = products.Count;
+      ViewBag.InStockProducts = products.Count(p => p.Stock > 0);
+      ViewBag.OutOfStockProducts = products.Count(p => p.Stock <= 0);
+      ViewBag.TotalValue = products.Sum(p => p.Price * p.Stock);
+
+      return View(products);
+    }*/
 
   [HttpGet]
   public async Task<IActionResult> GetCategoriesByBrand(string brandId)
@@ -418,15 +589,24 @@ public class EcommerceController : Controller
     }
   }
 
+  //[RoleRequirement("Admin", "Affiliate")]
   public IActionResult Dashboard() => View();
 
-  public IActionResult ProductCategoryList() => View();
+  public IActionResult ProductCategoryList()
+  {
+    ViewBag.FirebaseApiKey = _configuration["Firebase:ApiKey"];
+    ViewBag.FirebaseMessagingSenderId = _configuration["Firebase:MessagingSenderId"];
+    ViewBag.FirebaseAppId = _configuration["Firebase:AppId"];
+
+    return View();
+  }
   public IActionResult CustomerAll() => View();
   public IActionResult CustomerDetailsBilling() => View();
   public IActionResult CustomerDetailsNotifications() => View();
   public IActionResult CustomerDetailsOverview() => View();
   public IActionResult CustomerDetailsSecurity() => View();
 
+  //[RoleRequirement("Admin")]
   public IActionResult OrderList() => View();
   public IActionResult OrderDetails() => View();
   public IActionResult SettingsCheckout() => View();

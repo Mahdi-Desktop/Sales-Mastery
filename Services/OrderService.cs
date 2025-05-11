@@ -36,9 +36,9 @@ namespace AspnetCoreMvcFull.Services
           order.ItemCount = details.Count;
 
           // Fetch customer information if needed (optional)
-          if (!string.IsNullOrEmpty(order.CustomerId))
+          if (!string.IsNullOrEmpty(order.UserId))
           {
-            var customerRef = _firestoreDb.Collection("customers").Document(order.CustomerId);
+            var customerRef = _firestoreDb.Collection("customers").Document(order.UserId);
             var customerSnapshot = await customerRef.GetSnapshotAsync();
             if (customerSnapshot.Exists)
             {
@@ -84,7 +84,7 @@ namespace AspnetCoreMvcFull.Services
             .Sum(o => o.TotalAmount);
 
         // Calculate monthly revenue (last 6 months)
-        var monthlySales = new Dictionary<string, decimal>();
+        var monthlySales = new Dictionary<string, double>();
         var today = DateTime.UtcNow;
 
         for (int i = 0; i < 6; i++)
@@ -176,12 +176,12 @@ namespace AspnetCoreMvcFull.Services
       }
     }
 
-    public async Task<List<Order>> GetOrdersByCustomerIdAsync(string customerId)
+/*    public async Task<List<Order>> GetOrdersByUserIdAsync(string UserId)
     {
       try
       {
         var orders = new List<Order>();
-        var query = _firestoreDb.Collection(CollectionName).WhereEqualTo("CustomerId", customerId);
+        var query = _firestoreDb.Collection(CollectionName).WhereEqualTo("UserId", UserId);
         var snapshot = await query.GetSnapshotAsync();
 
         foreach (var document in snapshot.Documents)
@@ -195,67 +195,69 @@ namespace AspnetCoreMvcFull.Services
       }
       catch (Exception ex)
       {
-        _logger.LogError(ex, $"Error getting orders for customer {customerId}");
+        _logger.LogError(ex, $"Error getting orders for customer {UserId}");
         return new List<Order>();
       }
-    }
+    }*/
 
-    public async Task<string> CreateOrderAsync(Order order, List<OrderDetail> orderDetails)
+    public async Task<string> CreateOrderAsync(string userId, List<CartItem> cartItems)
     {
       try
       {
         // Validate the order
-        if (order == null || string.IsNullOrEmpty(order.CustomerId) || orderDetails == null || !orderDetails.Any())
+        if (string.IsNullOrEmpty(userId) || cartItems == null || !cartItems.Any())
         {
           throw new ArgumentException("Invalid order data");
         }
 
-        // Set timestamps
-        order.OrderDate = Timestamp.FromDateTime(DateTime.UtcNow);
-        order.CreatedAt = Timestamp.FromDateTime(DateTime.UtcNow);
-        order.UpdatedAt = Timestamp.FromDateTime(DateTime.UtcNow);
-
-        // Default status if not set
-        if (string.IsNullOrEmpty(order.Status))
+        // Create order
+        var order = new Order
         {
-          order.Status = "Pending";
-        }
+          UserId = userId,
+          Status = "Pending",
+          TotalAmount = cartItems.Sum(item => item.SubTotal),
+          OrderDate = Timestamp.FromDateTime(DateTime.UtcNow),
+          CreatedAt = Timestamp.FromDateTime(DateTime.UtcNow),
+          UpdatedAt = Timestamp.FromDateTime(DateTime.UtcNow)
+        };
 
-        // Add order to get ID
+        // Save order to Firestore
         string orderId = await AddAsync(order);
-
-        // Calculate order total and process order details
-        decimal totalAmount = 0;
-        var batch = _firestoreDb.StartBatch();
-
-        foreach (var detail in orderDetails)
-        {
-          // Set order ID reference
-          detail.OrderId = orderId;
-
-          // Calculate subtotal
-          detail.SubTotal = detail.Price * detail.Quantity;
-          totalAmount += detail.SubTotal;
-
-          // Set timestamp
-          detail.CreatedAt = Timestamp.FromDateTime(DateTime.UtcNow);
-
-          // Add to batch
-          var detailRef = _firestoreDb.Collection("orderDetails").Document();
-          detail.OrderDetailId = detailRef.Id;
-          batch.Set(detailRef, detail);
-        }
-
-        // Update order with total amount
         order.OrderId = orderId;
-        order.TotalAmount = totalAmount;
-        await UpdateAsync(orderId, order);
+
+        // Create order details
+        var batch = _firestoreDb.StartBatch();
+        foreach (var item in cartItems)
+        {
+          var orderDetail = new OrderDetail
+          {
+            OrderId = orderId,
+            ProductId = item.ProductId,
+            ProductName = item.Name,
+            Quantity = item.Quantity,
+            Price = item.Price,
+            SubTotal = item.SubTotal,
+            CreatedAt = Timestamp.FromDateTime(DateTime.UtcNow)
+          };
+
+          var detailRef = _firestoreDb.Collection("orderDetails").Document();
+          batch.Set(detailRef, orderDetail);
+        }
 
         // Commit all details in one batch
         await batch.CommitAsync();
 
-        // Process any affiliate commissions (could be implemented later)
-        await ProcessCommissions(order, orderDetails);
+        // Update user's order list
+        var userRef = _firestoreDb.Collection("users").Document(userId);
+        var userSnapshot = await userRef.GetSnapshotAsync();
+        if (userSnapshot.Exists)
+        {
+          // Use FieldValue.ArrayUnion to add the order ID to the user's orders list
+          await userRef.UpdateAsync("OrderId", FieldValue.ArrayUnion(orderId));
+        }
+
+        // Process any affiliate commissions
+        await ProcessCommissions(order, cartItems);
 
         return orderId;
       }
@@ -265,91 +267,59 @@ namespace AspnetCoreMvcFull.Services
         throw;
       }
     }
-
-    private async Task ProcessCommissions(Order order, List<OrderDetail> orderDetails)
+    private async Task ProcessCommissions(Order order, List<CartItem> cartItems)
     {
       try
       {
-        // This would handle calculating and recording affiliate commissions
-        // Simplified example:
+        // Get the customer
+        var userRef = _firestoreDb.Collection("users").Document(order.UserId);
+        var userSnapshot = await userRef.GetSnapshotAsync();
 
-        // 1. Check if customer was referred by an affiliate
-        var customerRef = _firestoreDb.Collection("customers").Document(order.CustomerId);
-        var customerSnapshot = await customerRef.GetSnapshotAsync();
-
-        if (!customerSnapshot.Exists)
-        {
+        if (!userSnapshot.Exists)
           return;
-        }
 
-        var customer = customerSnapshot.ConvertTo<Customer>();
+        var user = userSnapshot.ConvertTo<User>();
 
-        if (string.IsNullOrEmpty(customer.ReferenceUserId))
-        {
-          return; // No affiliate reference
-        }
+        // Check if user was referred by an affiliate
+        if (string.IsNullOrEmpty(user.CreatedBy))
+          return;
 
-        // 2. Get the affiliate record
-        var affiliateQuery = _firestoreDb.Collection("affiliates")
-            .WhereEqualTo("UserId", customer.ReferenceUserId);
-        var affiliateSnapshot = await affiliateQuery.GetSnapshotAsync();
-
-        if (affiliateSnapshot.Count == 0)
-        {
-          return; // No affiliate found
-        }
-
-        var affiliate = affiliateSnapshot.Documents[0].ConvertTo<Affiliate>();
-        affiliate.AffiliateId = affiliateSnapshot.Documents[0].Id;
-
-        // 3. Calculate and record commissions for each product
+        // Process commission for each product
         var batch = _firestoreDb.StartBatch();
 
-        foreach (var detail in orderDetails)
+        foreach (var item in cartItems)
         {
-          // Get product to check brand commission rate
-          var productRef = _firestoreDb.Collection("products").Document(detail.ProductId);
+          // Get product info
+          var productRef = _firestoreDb.Collection("products").Document(item.ProductId);
           var productSnapshot = await productRef.GetSnapshotAsync();
 
           if (!productSnapshot.Exists)
-          {
             continue;
-          }
 
           var product = productSnapshot.ConvertTo<Product>();
 
-          // Get brand for commission rate
-          var brandRef = _firestoreDb.Collection("brands").Document(product.BrandId);
-          var brandSnapshot = await brandRef.GetSnapshotAsync();
+          // Calculate commission based on product's commission rate
+          int commissionRate = product.Commission;
+          int commissionAmount = (item.SubTotal * commissionRate) / 100;
 
-          decimal commissionRate = affiliate.CommissionRate; // Default to affiliate rate
 
-          if (brandSnapshot.Exists)
+          if (commissionAmount <= 0)
+            continue;
+
+          // Create commission record
+          var commission = new Commission
           {
-            var brand = brandSnapshot.ConvertTo<Brand>();
-            commissionRate = brand.CommissionRate; // Use brand-specific rate if available
-          }
+            AffiliateId = user.CreatedBy,
+            OrderId = order.OrderId,
+            ProductId = item.ProductId,
+            Amount = commissionAmount,
+            IsPaid = false,
+            CreatedAt = Timestamp.FromDateTime(DateTime.UtcNow)
+          };
 
-          // Calculate commission
-          decimal commissionAmount = detail.SubTotal * (commissionRate / 100m);
-
-          if (commissionAmount > 0)
-          {
-            // Create commission record
-            var commission = new Commission
-            {
-              AffiliateId = affiliate.AffiliateId,
-              OrderId = order.OrderId,
-              ProductId = detail.ProductId,
-              Amount = commissionAmount,
-              IsPaid = false,
-              CreatedAt = Timestamp.FromDateTime(DateTime.UtcNow)
-            };
-
-            // Add to batch
-            var commissionRef = _firestoreDb.Collection("commissions").Document();
-            batch.Set(commissionRef, commission);
-          }
+          // Add to batch
+          var commissionRef = _firestoreDb.Collection("commissions").Document();
+          batch.Set(commissionRef, commission);
         }
 
         // Commit all commission records
@@ -362,26 +332,23 @@ namespace AspnetCoreMvcFull.Services
       }
     }
 
-    public async Task<bool> UpdateOrderStatusAsync(string orderId, string status)
+
+
+    public async Task UpdateOrderStatusAsync(string orderId, string status)
     {
       try
       {
         var order = await GetByIdAsync(orderId);
-        if (order == null)
+        if (order != null)
         {
-          return false;
+          order.Status = status;
+          await UpdateAsync(orderId, order);
         }
-
-        order.Status = status;
-        order.UpdatedAt = Timestamp.FromDateTime(DateTime.UtcNow);
-
-        await UpdateAsync(orderId, order);
-        return true;
       }
       catch (Exception ex)
       {
         _logger.LogError(ex, $"Error updating status for order {orderId}");
-        return false;
+        throw;
       }
     }
 
@@ -440,5 +407,23 @@ namespace AspnetCoreMvcFull.Services
       }
     }
 
+    public async Task<List<Order>> GetOrdersByUserIdAsync(string userId)
+    {
+      try
+      {
+        var query = _collection.WhereEqualTo("UserId", userId);
+        var snapshot = await query.GetSnapshotAsync();
+
+        return snapshot.Documents
+            .Select(doc => doc.ConvertTo<Order>())
+            .OrderByDescending(o => o.OrderDate)
+            .ToList();
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, $"Error getting orders for user {userId}");
+        throw;
+      }
+    }
   }
 }

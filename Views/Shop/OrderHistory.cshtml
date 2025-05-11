@@ -1,0 +1,67 @@
+@using Newtonsoft.Json
+@{
+    ViewData["Title"] = "Order History";
+    var userId = Context.Session.GetString("UserId") ?? "";
+    var isAdmin = Context.Session.GetString("IsAdmin") == "1";
+    var isAffiliate = Context.Session.GetString("IsAffiliate") == "1";
+    var isCustomer = Context.Session.GetString("IsCustomer") == "1";
+
+    var userDataObj = new
+    {
+        userId = userId,
+        isAdmin = isAdmin,
+        isAffiliate = isAffiliate,
+        isCustomer = isCustomer
+    };
+
+    var userDataJson = JsonConvert.SerializeObject(userDataObj);
+}
+
+<script id="user-data" type="application/json">
+    @Html.Raw(userDataJson)
+</script>
+
+<script src="~/js/shop-common.js" defer></script>
+<script src="~/js/order-history.js" defer></script>
+
+<div class="container-xxl flex-grow-1 container-p-y">
+    <h4 class="fw-bold py-3 mb-4">
+        <span class="text-muted fw-light">E-commerce /</span> Order History
+    </h4>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Your Orders</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Total</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersContainer">
+                                <!-- Orders will be loaded by JavaScript -->
+                                <tr>
+                                    <td colspan="5" class="text-center py-3">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading orders...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

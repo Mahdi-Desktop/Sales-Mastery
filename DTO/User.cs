@@ -43,13 +43,16 @@ namespace AspnetCoreMvcFull.DTO
 
     // Relationships
     [FirestoreProperty]
-    public List<string> CustomerId { get; set; } = new List<string>();
+    public List<string>? CustomerId { get; set; } = new List<string>();
 
     [FirestoreProperty]
-    public List<string> OrderId { get; set; } = new List<string>();
+    public List<string>? AffiliateId { get; set; } = new List<string>();
 
     [FirestoreProperty]
-    public List<string> InvoiceId { get; set; } = new List<string>();
+    public List<string>? OrderId { get; set; } = new List<string>();
+
+    [FirestoreProperty]
+    public List<string>? InvoiceId { get; set; } = new List<string>();
 
     public string DisplayName => $"{FirstName} {LastName}";
   }

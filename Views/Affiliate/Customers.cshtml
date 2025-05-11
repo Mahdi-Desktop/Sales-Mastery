@@ -1,0 +1,128 @@
+@{
+    ViewData["Title"] = "Referred Customers";
+}
+
+@section VendorScripts {
+    <script src="~/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+}
+
+@section PageScripts {
+    <script src="~/js/affiliate-customers.js"></script>
+}
+
+@* ************** Content ************** *@
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Your Referred Customers</h5>
+                <div class="d-flex align-items-center">
+                    <input type="text" id="searchCustomers" class="form-control" placeholder="Search customers...">
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table datatable-customers">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>Email</th>
+                            <th>Joined Date</th>
+                            <th>Orders</th>
+                            <th>Amount Spent</th>
+                            <th>Commissions Earned</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- This is placeholder data - would be populated from your data source -->
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar avatar-sm me-3">
+                                        <div class="avatar-initial bg-label-primary rounded-circle">JD</div>
+                                    </div>
+                                    <div>
+                                        <span class="fw-medium">John Doe</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>john.doe@example.com</td>
+                            <td>May 15, 2023</td>
+                            <td>3</td>
+                            <td>$345.00</td>
+                            <td>$51.75</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar avatar-sm me-3">
+                                        <div class="avatar-initial bg-label-success rounded-circle">JS</div>
+                                    </div>
+                                    <div>
+                                        <span class="fw-medium">Jane Smith</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>jane.smith@example.com</td>
+                            <td>June 2, 2023</td>
+                            <td>1</td>
+                            <td>$129.99</td>
+                            <td>$19.50</td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar avatar-sm me-3">
+                                        <div class="avatar-initial bg-label-warning rounded-circle">MB</div>
+                                    </div>
+                                    <div>
+                                        <span class="fw-medium">Michael Brown</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>m.brown@example.com</td>
+                            <td>July 10, 2023</td>
+                            <td>2</td>
+                            <td>$199.98</td>
+                            <td>$30.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="alert alert-primary mb-0">
+                            <h6 class="alert-heading mb-1">Grow Your Affiliate Income</h6>
+                            <p class="mb-0">Share your affiliate link with more potential customers to increase your earnings. Referrals are tracked automatically when customers use your link.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    <script>
+        window.userContext = {
+        userId: "@ViewBag.UserId",
+        isAdmin: "@ViewBag.IsAdmin" === "1",
+        isAffiliate: "@ViewBag.IsAffiliate" === "1",
+        isCustomer: "@ViewBag.IsCustomer" === "1"
+    };
+        (function () {
+            var table = $('.datatable-customers').DataTable({
+                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
+                lengthMenu: [10, 25, 50, 100],
+                language: {
+                    search: '_INPUT_',
+                    searchPlaceholder: 'Search customers...'
+                }
+            });
+
+            // Apply custom search
+            $('#searchCustomers').on('keyup', function () {
+                table.search(this.value).draw();
+            });
+        });
+    </script>

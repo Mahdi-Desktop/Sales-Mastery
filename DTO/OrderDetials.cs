@@ -19,10 +19,10 @@ namespace AspnetCoreMvcFull.DTO
     public int Quantity { get; set; }
 
     [FirestoreProperty]
-    public decimal Price { get; set; }
+    public int Price { get; set; }
 
     [FirestoreProperty]
-    public decimal SubTotal { get; set; }
+    public int SubTotal { get; set; }
 
     [FirestoreProperty]
     public Timestamp CreatedAt { get; set; } = Timestamp.FromDateTime(DateTime.UtcNow);

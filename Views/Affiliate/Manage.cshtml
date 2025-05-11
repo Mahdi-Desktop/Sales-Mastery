@@ -1,0 +1,72 @@
+@{
+    ViewData["Title"] = "Affiliate Management";
+}
+
+@section VendorStyles {
+    <link rel="stylesheet" href="~/vendor/libs/datatables-bs5/datatables.bootstrap5.css">
+    <link rel="stylesheet" href="~/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css">
+    <link rel="stylesheet" href="~/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css">
+    <link rel="stylesheet" href="~/vendor/libs/select2/select2.css">
+    <link rel="stylesheet" href="~/vendor/libs/toastr/toastr.css">
+}
+
+@section VendorScripts {
+    <script src="~/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+    <script src="~/vendor/libs/select2/select2.js"></script>
+    <script src="~/vendor/libs/toastr/toastr.js"></script>
+}
+
+
+<script>
+    // Pass Firebase configuration from server to client
+    const firebaseConfig = {
+        apiKey: "@ViewBag.FirebaseApiKey",
+        authDomain: "@ViewBag.FirebaseProjectId" + ".firebaseapp.com",
+        projectId: "@ViewBag.FirebaseProjectId",
+        storageBucket: "@ViewBag.FirebaseStorageBucket",
+        messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+        appId: "@ViewBag.FirebaseAppId"
+    };
+</script>
+
+<!-- Affiliate Management -->
+<div class="card">
+    <div class="card-header border-bottom">
+        <h5 class="card-title mb-3">Affiliate Management</h5>
+        <div class="d-flex justify-content-between align-items-center row pb-2 gap-3 gap-md-0">
+            <div class="col-md-4 user_role"></div>
+            <div class="col-md-4 user_status"></div>
+            <!-- Add Affiliate button will be added by JavaScript -->
+        </div>
+    </div>
+    <div class="card-datatable table-responsive">
+        <table class="datatables-affiliates table border-top">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Affiliate</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th>Customers</th>
+                    <th>Orders</th>
+                    <th>Revenue</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+<!-- Modals will be dynamically added by JavaScript -->
+
+<script src="~/js/app-affiliate-management.js"></script>
+<script>
+    // Pass user context from server to client
+    window.userContext = {
+        userId: "@ViewBag.UserId",
+        isAdmin: "@ViewBag.IsAdmin" === "1",
+        isAffiliate: "@ViewBag.IsAffiliate" === "1",
+        isCustomer: "@ViewBag.IsCustomer" === "1"
+    };
+</script>

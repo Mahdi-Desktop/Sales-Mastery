@@ -1,0 +1,175 @@
+@model CreateAffiliateViewModel
+@{
+    ViewData["Title"] = "Add New Affiliate";
+}
+
+@section VendorScripts {
+    <script src="~/vendor/libs/cleavejs/cleave.js"></script>
+    <script src="~/vendor/libs/cleavejs/cleave-phone.js"></script>
+    <script src="~/vendor/libs/form-validation/popular.js"></script>
+    <script src="~/vendor/libs/form-validation/bootstrap5.js"></script>
+    <script src="~/vendor/libs/form-validation/auto-focus.js"></script>
+}
+
+@* ************** Content ************** *@
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Add New Affiliate</h5>
+                <a asp-controller="Affiliate" asp-action="Manage" class="btn btn-secondary">
+                    <i class="ti ti-arrow-left me-1"></i>Back to List
+                </a>
+            </div>
+            <div class="card-body">
+                <form id="createAffiliateForm" asp-controller="Affiliate" asp-action="Create" method="post" class="row g-3">
+                    <div class="col-12">
+                        <div class="alert alert-primary" role="alert">
+                            <h6 class="alert-heading mb-1">
+                                <i class="ti ti-info-circle me-1"></i>
+                                Affiliate Information
+                            </h6>
+                            <p class="mb-0">Create a new affiliate user with commission rate. This will create both a user account and an affiliate record.</p>
+                        </div>
+                    </div>
+
+                    <!-- Personal Information -->
+                    <div class="col-12">
+                        <h6 class="fw-semibold">1. Personal Information</h6>
+                        <hr class="mt-0" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="FirstName" class="form-label">First Name</label>
+                        <input asp-for="FirstName" type="text" class="form-control" placeholder="Enter first name" required />
+                        <span asp-validation-for="FirstName" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="LastName" class="form-label">Last Name</label>
+                        <input asp-for="LastName" type="text" class="form-control" placeholder="Enter last name" required />
+                        <span asp-validation-for="LastName" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="Email" class="form-label">Email</label>
+                        <input asp-for="Email" type="email" class="form-control" placeholder="john.doe@example.com" required />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="PhoneNumber" class="form-label">Phone Number</label>
+                        <input asp-for="PhoneNumber" type="text" class="form-control phone-mask" placeholder="+1 (123) 456-7890" required />
+                        <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                    </div>
+
+                    <!-- Account Information -->
+                    <div class="col-12 mt-4">
+                        <h6 class="fw-semibold">2. Account Information</h6>
+                        <hr class="mt-0" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="Password" class="form-label">Password</label>
+                        <div class="input-group input-group-merge">
+                            <input asp-for="Password"
+                                   class="form-control"
+                                   type="password"
+                                   id="password"
+                                   placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;"
+                                   required />
+                            <span class="input-group-text cursor-pointer"><i class="ti ti-eye-off"></i></span>
+                        </div>
+                        <small class="form-text">Password must be at least 8 characters long</small>
+                        <span asp-validation-for="Password" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="confirmPassword" class="form-label">Confirm Password</label>
+                        <div class="input-group input-group-merge">
+                            <input type="password"
+                                   id="confirmPassword"
+                                   name="confirmPassword"
+                                   class="form-control"
+                                   placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;"
+                                   required />
+                            <span class="input-group-text cursor-pointer"><i class="ti ti-eye-off"></i></span>
+                        </div>
+                        <span id="confirmPasswordError" class="text-danger"></span>
+                    </div>
+
+                    <!-- Affiliate Settings -->
+                    <div class="col-12 mt-4">
+                        <h6 class="fw-semibold">3. Affiliate Settings</h6>
+                        <hr class="mt-0" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="CommissionRate" class="form-label">Commission Rate (%)</label>
+                        <input asp-for="CommissionRate"
+                               type="number"
+                               class="form-control"
+                               placeholder="Enter commission rate"
+                               min="0"
+                               max="100"
+                               step="0.5"
+                               value="15"
+                               required />
+                        <small class="form-text">Default commission rate for this affiliate</small>
+                        <span asp-validation-for="CommissionRate" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-12 mt-4">
+                        <button type="submit" class="btn btn-primary me-sm-3 me-1">Create Affiliate</button>
+                        <button type="reset" class="btn btn-label-secondary">Reset</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+            window.userContext = {
+            userId: "@ViewBag.UserId",
+            isAdmin: "@ViewBag.IsAdmin" === "1",
+            isAffiliate: "@ViewBag.IsAffiliate" === "1",
+            isCustomer: "@ViewBag.IsCustomer" === "1"
+        };
+        $(function() {
+            // Phone mask
+            if ($('.phone-mask').length) {
+                new Cleave('.phone-mask', {
+                    phone: true,
+                    phoneRegionCode: 'US'
+                });
+            }
+
+            // Form validation
+            const createAffiliateForm = document.getElementById('createAffiliateForm');
+
+            // Password confirmation validation
+            const password = document.getElementById('password');
+            const confirmPassword = document.getElementById('confirmPassword');
+            const confirmPasswordError = document.getElementById('confirmPasswordError');
+
+            confirmPassword.addEventListener('input', function() {
+                if (password.value !== confirmPassword.value) {
+                    confirmPasswordError.textContent = 'Passwords do not match';
+                } else {
+                    confirmPasswordError.textContent = '';
+                }
+            });
+
+            // Final form submission validation
+            createAffiliateForm.addEventListener('submit', function(event) {
+                if (password.value !== confirmPassword.value) {
+                    event.preventDefault();
+                    confirmPasswordError.textContent = 'Passwords do not match';
+                    confirmPassword.focus();
+                }
+            });
+        });
+    </script>
+}

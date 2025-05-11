@@ -17,7 +17,7 @@ namespace AspnetCoreMvcFull.DTO
     public string Status { get; set; } // "Paid", "Pending", "Overdue", etc.
 
     [FirestoreProperty]
-    public decimal TotalAmount { get; set; }
+    public int TotalAmount { get; set; }
 
     [FirestoreProperty]
     public Timestamp InvoiceDate { get; set; }
@@ -57,18 +57,18 @@ namespace AspnetCoreMvcFull.DTO
     public string Description { get; set; }
 
     [FirestoreProperty]
-    public decimal Quantity { get; set; }
+    public int Quantity { get; set; }
 
     [FirestoreProperty]
-    public decimal UnitPrice { get; set; }
+    public int UnitPrice { get; set; }
 
     [FirestoreProperty]
-    public decimal Discount { get; set; }
+    public int Discount { get; set; }
 
     [FirestoreProperty]
-    public decimal Tax { get; set; }
+    public int Tax { get; set; }
 
     [FirestoreProperty]
-    public decimal Total { get; set; }
+    public int Total { get; set; }
   }
 }

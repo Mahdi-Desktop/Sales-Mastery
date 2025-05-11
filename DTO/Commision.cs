@@ -16,11 +16,22 @@ namespace AspnetCoreMvcFull.DTO
     public string OrderId { get; set; }
 
     [FirestoreProperty]
+    public string CustomerId { get; set; }
+
+
+    [FirestoreProperty]
     public string ProductId { get; set; }
 
     [FirestoreProperty]
-    public decimal Amount { get; set; }
+    public int Amount { get; set; }
+    [FirestoreProperty]
+    public int Rate { get; set; }
 
+    [FirestoreProperty]
+    public string Status { get; set; } // P
+
+    [FirestoreProperty]
+    public Timestamp? PaidAt { get; set; }
     [FirestoreProperty]
     public bool IsPaid { get; set; }
 

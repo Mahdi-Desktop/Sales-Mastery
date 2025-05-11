@@ -1,0 +1,184 @@
+@{
+    ViewData["Title"] = "Affiliate Program Settings";
+}
+
+@section VendorScripts {
+    <script src="~/vendor/libs/sweetalert2/sweetalert2.js"></script>
+}
+
+@section PageScripts {
+    @* <script src="~/js/firebase-init.js"></script> *@
+    <script src="~/js/affiliate-settings.js"></script>
+}
+
+@* ************** Content ************** *@
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Affiliate Program Settings</h5>
+                <button type="button" class="btn btn-primary" id="saveSettings">
+                    <i class="ti ti-device-floppy me-1"></i>Save Changes
+                </button>
+            </div>
+            <div class="card-body">
+                <form id="affiliateSettingsForm">
+                    <!-- Form content will be dynamically loaded -->
+                </form>
+            </div>
+            <div class="card-footer text-end">
+                <button type="button" class="btn btn-primary" id="saveSettingsFooter">
+                    <i class="ti ti-device-floppy me-1"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden template for settings form -->
+<template id="settingsFormTemplate">
+    <!-- General Settings -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h6 class="fw-semibold">General Settings</h6>
+            <hr class="mt-0" />
+        </div>
+
+        <div class="col-md-6">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="programEnabled" checked>
+                <label class="form-check-label" for="programEnabled">Enable Affiliate Program</label>
+            </div>
+            <div class="form-text">When disabled, affiliate links will still work but new registrations will be closed.</div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="autoApprove">
+                <label class="form-check-label" for="autoApprove">Auto-approve New Affiliates</label>
+            </div>
+            <div class="form-text">When enabled, new affiliate applications will be automatically approved.</div>
+        </div>
+    </div>
+
+    <!-- Commission Settings -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h6 class="fw-semibold">Commission Settings</h6>
+            <hr class="mt-0" />
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label for="defaultCommissionRate" class="form-label">Default Commission Rate (%)</label>
+            <input type="number" id="defaultCommissionRate" class="form-control" min="0" max="100" step="0.5" value="15">
+            <div class="form-text">The default commission rate for new affiliates.</div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label for="minPayoutAmount" class="form-label">Minimum Payout Amount ($)</label>
+            <input type="number" id="minPayoutAmount" class="form-control" min="0" step="1" value="50">
+            <div class="form-text">Minimum amount required for commission payout.</div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label for="cookieDuration" class="form-label">Cookie Duration (Days)</label>
+            <input type="number" id="cookieDuration" class="form-control" min="1" step="1" value="30">
+            <div class="form-text">How long to track visitors referred by affiliates.</div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label for="payoutSchedule" class="form-label">Payout Schedule</label>
+            <select id="payoutSchedule" class="form-select">
+                <option value="monthly">Monthly</option>
+                <option value="biweekly">Bi-weekly</option>
+                <option value="weekly">Weekly</option>
+            </select>
+            <div class="form-text">How often commission payments are processed.</div>
+        </div>
+    </div>
+
+    <!-- Email Notification Settings -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h6 class="fw-semibold">Email Notification Settings</h6>
+            <hr class="mt-0" />
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="notifyNewReferral" checked>
+                <label class="form-check-label" for="notifyNewReferral">
+                    Notify Affiliates on New Referral
+                </label>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="notifyNewCommission" checked>
+                <label class="form-check-label" for="notifyNewCommission">
+                    Notify Affiliates on New Commission
+                </label>
+
+            </div>
+        </div>
+
+<div class="col-md-6 mb-3">
+    <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="notifyPayout" checked>
+        <label class="form-check-label" for="notifyPayout">
+            Notify Affiliates on Payout
+        </label>
+    </div>
+</div>
+
+<div class="col-md-6 mb-3">
+    <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="adminNotifications" checked>
+        <label class="form-check-label" for="adminNotifications">
+            Admin Notifications for New Affiliates
+        </label>
+    </div>
+</div>
+    </div>
+
+<!-- Terms and Conditions -->
+<div class="row">
+    <div class="col-12">
+        <h6 class="fw-semibold">Terms and Conditions</h6>
+        <hr class="mt-0" />
+    </div>
+
+    <div class="col-12 mb-3">
+        <label for="termsAndConditions" class="form-label">Affiliate Program Terms</label>
+        <textarea id="termsAndConditions" class="form-control" rows="5">
+1. Participation in the Affiliate Program
+
+1.1 To begin participation in the Affiliate Program, you must submit a completed Program application via our site. We will evaluate your application and notify you of your acceptance or rejection. We may reject your application if we determine that your site is unsuitable for our Program.
+
+1.2 If you are accepted as an Affiliate, you will be notified by email and will be allowed to use our promotional materials on your website.
+
+2. Commission and Payments
+
+2.1 You will receive a commission on qualifying sales made through your affiliate link.
+2.2 Commissions will be paid according to the payout schedule selected in your affiliate account.
+2.3 The minimum payout amount is $50. If your account does not reach this threshold, the balance will roll over to the next pay period.
+
+3. Term and Termination
+
+3.1 This Agreement will begin upon our acceptance of your Affiliate application and will end when terminated by either party.
+3.2 Either you or we may terminate this Agreement at any time, with or without cause, by giving the other party written notice of termination.
+            </textarea>
+    </div>
+</div>
+</template>
+
+<script>
+    // Pass user context from server to client
+    window.userContext = {
+        userId: "@ViewBag.UserId",
+        isAdmin: "@ViewBag.IsAdmin" === "1",
+        isAffiliate: "@ViewBag.IsAffiliate" === "1",
+        isCustomer: "@ViewBag.IsCustomer" === "1"
+    };
+</script>

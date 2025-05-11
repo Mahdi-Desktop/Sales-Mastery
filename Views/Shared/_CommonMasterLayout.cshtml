@@ -5,6 +5,16 @@
   ViewData["frontVar"] = isFront ? "Front" : "";
   @* Compact/Fluid class *@
   ViewData["contentType"] = ViewData["container"] is string container && container == "container-xxl" ? "layout-compact" : "layout-wide";
+
+
+    // Pass Firebase configuration to all views
+    // ViewData["FirebaseApiKey"] = ViewBag.Configuration["Firebase:ApiKey"];
+    // ViewData["FirebaseProjectId"] = ViewBag.Configuration["Firebase:ProjectId"];
+    // ViewData["FirebaseAuthDomain"] = $"{ViewBag.Configuration["Firebase:ProjectId"]}.firebaseapp.com";
+    // ViewData["FirebaseStorageBucket"] = $"{ViewBag.Configuration["Firebase:ProjectId"]}.appspot.com";
+    // ViewData["FirebaseMessagingSenderId"] = ViewBag.Configuration["Firebase:MessagingSenderId"];
+    // ViewData["FirebaseAppId"] = ViewBag.Configuration["Firebase:AppId"];
+
 }
 
 @inject IHttpContextAccessor httpContextAccessor
@@ -30,7 +40,7 @@
   <!-- Canonical SEO -->
   <link rel="canonical" href='@productPage'>
   <!-- Favicon -->
-  <link rel="icon" type="image/x-icon" href="~/img/favicon/sales.png" />
+  <link rel="icon" type="image/x-icon" href="~/img/favicon/png.png" />
 
   <!-- Core Styles -->
   @await Html.PartialAsync("Sections/_Styles" + ViewData["frontVar"])
@@ -58,6 +68,7 @@
   @RenderSection("VendorScripts", required: false)
 
   <script src='~/js/@ViewData["main"]main.js'></script>
+    <!-- In the head section -->
 
   <!-- Page Scripts-->
   @RenderSection("PageScripts", required: false)
@@ -66,3 +77,4 @@
 </body>
 
 </html>
+

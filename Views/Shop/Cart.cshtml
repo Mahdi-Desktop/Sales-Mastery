@@ -1,0 +1,126 @@
+@{
+    ViewData["Title"] = "Shopping Cart";
+    var userId = Context.Session.GetString("UserId") ?? "";
+    var isAdmin = Context.Session.GetString("IsAdmin") == "1";
+    var isAffiliate = Context.Session.GetString("IsAffiliate") == "1";
+    var isCustomer = Context.Session.GetString("IsCustomer") == "1";
+
+    var userDataObj = new
+    {
+        userId = userId,
+        isAdmin = isAdmin,
+        isAffiliate = isAffiliate,
+        isCustomer = isCustomer
+    };
+
+    var userDataJson = Newtonsoft.Json.JsonConvert.SerializeObject(userDataObj);
+}
+
+<script id="user-data" type="application/json">
+    @Html.Raw(userDataJson)
+</script>
+
+<script src="~/js/shop-common.js"></script>
+<script src="~/js/cart.js"></script>
+
+<div class="container-xxl flex-grow-1 container-p-y">
+    <h4 class="fw-bold py-3 mb-4">
+        <span class="text-muted fw-light">E-commerce /</span> Shopping Cart
+    </h4>
+
+    <div class="row">
+        <div class="col-12">
+            <!-- Empty Cart Message -->
+            <div id="emptyCartMessage" style="display: none;">
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="ti ti-shopping-cart text-primary" style="font-size: 3rem;"></i>
+                        <h3 class="mt-3">Your Cart is Empty</h3>
+                        <p class="mb-4">Looks like you haven't added any products to your cart yet.</p>
+                        <a href="@Url.Action("Index")" class="btn btn-primary">Start Shopping</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cart Content -->
+            <div id="cartContent">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Cart Items</h5>
+                        <button id="clearCartButton" class="btn btn-sm btn-outline-danger">
+                            <i class="ti ti-trash me-1"></i> Clear Cart
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Price</th>
+                                        <th>Quantity</th>
+                                        <th class="text-end">Subtotal</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cartItems">
+                                    <tr>
+                                        <td colspan="5" class="text-center py-3">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading cart...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="3" class="text-end fw-bold">Subtotal</td>
+                                        <td class="text-end">$<span id="subtotal">0.00</span></td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="3" class="text-end fw-bold">Shipping</td>
+                                        <td class="text-end">$4.00</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="3" class="text-end fw-bold">Total</td>
+                                        <td class="text-end fw-bold">$<span id="total">0.00</span></td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="@Url.Action("Index")" class="btn btn-outline-primary">
+                        <i class="ti ti-arrow-left me-1"></i> Continue Shopping
+                    </a>
+                    <!-- Replace the checkout button with this -->
+                    <button id="checkoutButton" class="btn btn-primary">
+                        <i class="ti ti-check me-1"></i> Proceed to Checkout
+                    </button>
+
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log("Cart page loaded");
+
+      const checkoutButton = document.getElementById('checkoutButton');
+      if (checkoutButton) {
+        console.log("Checkout button found");
+        checkoutButton.addEventListener('click', function(e) {
+          console.log("Checkout button clicked");
+        });
+      } else {
+        console.log("Checkout button not found");
+      }
+    });
+</script>

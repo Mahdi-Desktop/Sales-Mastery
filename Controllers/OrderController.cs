@@ -1,3 +1,4 @@
+using AspnetCoreMvcFull.Attributes;
 using AspnetCoreMvcFull.DTO;
 using AspnetCoreMvcFull.Services;
 using Google.Cloud.Firestore;
@@ -44,7 +45,7 @@ namespace AspnetCoreMvcFull.Controllers
     {
       return View();
     }
-    // Example Order controller method
+
     public async Task<IActionResult> GetAllOrders()
     {
       try
@@ -59,6 +60,7 @@ namespace AspnetCoreMvcFull.Controllers
     }
 
     [HttpGet]
+    [RoleAuthorize("Customer")]
     public async Task<IActionResult> List()
     {
       try
@@ -86,22 +88,19 @@ namespace AspnetCoreMvcFull.Controllers
         else if (isAffiliate)
         {
           // Affiliates can see orders from their referred customers
-          // Customers where ReferenceUserId equals the current affiliate's userId
+          // Get customers with referrer = current affiliate's userId
           var customers = await _customerService.GetCustomersByReferrerAsync(userId);
           foreach (var customer in customers)
           {
-            var customerOrders = await _orderService.GetOrdersByCustomerIdAsync(customer.CustomerId);
+            // Use UserId instead of CustomerId
+            var customerOrders = await _orderService.GetOrdersByUserIdAsync(customer.ReferenceUserId);
             orders.AddRange(customerOrders);
           }
         }
         else
         {
-          // Regular users see their own orders (through their associated customer record)
-          var customer = await _customerService.GetCustomerByUserIdAsync(userId);
-          if (customer != null)
-          {
-            orders = await _orderService.GetOrdersByCustomerIdAsync(customer.CustomerId);
-          }
+          // Regular users see their own orders
+          orders = await _orderService.GetOrdersByUserIdAsync(userId);
         }
 
         return View(orders);
@@ -131,25 +130,25 @@ namespace AspnetCoreMvcFull.Controllers
         }
 
         // Check authorization
-        var ReferenceUserId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+        var currentUserId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
         var isAdmin = User.Claims.Any(c => c.Type == ClaimTypes.Role && c.Value == "Admin");
 
-        if (!isAdmin)
+        if (!isAdmin && order.UserId != currentUserId)
         {
-          var customer = await _customerService.GetByIdAsync(order.CustomerId);
           var isAffiliate = User.Claims.Any(c => c.Type == ClaimTypes.Role && c.Value == "Affiliate");
 
           if (isAffiliate)
           {
-            var affiliate = await _affiliateService.GetAffiliateByUserIdAsync(ReferenceUserId);
+            // Check if this affiliate is the referrer for the order's user
+            var affiliate = await _affiliateService.GetAffiliateByUserIdAsync(currentUserId);
             if (affiliate == null)
             {
               return Forbid();
             }
 
-            // Check if this customer belongs to the affiliate
-            var customersByAffiliate = await _customerService.GetCustomersByReferrerAsync(ReferenceUserId);
-            if (!customersByAffiliate.Any(c => c.CustomerId == order.CustomerId))
+            // Check if this user was referred by the affiliate
+            var user = await _userService.GetByIdAsync(order.UserId);
+            if (user == null || user.CreatedBy != currentUserId)
             {
               return Forbid();
             }
@@ -157,10 +156,7 @@ namespace AspnetCoreMvcFull.Controllers
           else
           {
             // Regular user can only see their own orders
-            if (customer?.ReferenceUserId != ReferenceUserId)
-            {
-              return Forbid();
-            }
+            return Forbid();
           }
         }
 
@@ -203,20 +199,19 @@ namespace AspnetCoreMvcFull.Controllers
         }
 
         // Check authorization
-        var ReferenceUserId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+        var currentUserId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
         var isAdmin = User.Claims.Any(c => c.Type == ClaimTypes.Role && c.Value == "Admin");
         var isAffiliate = User.Claims.Any(c => c.Type == ClaimTypes.Role && c.Value == "Affiliate");
 
-        // Get customer info
-        var customer = await _customerService.GetByIdAsync(order.CustomerId);
+        // Get user info for the order
+        var user = await _userService.GetByIdAsync(order.UserId);
 
-        if (!isAdmin)
+        if (!isAdmin && order.UserId != currentUserId)
         {
           if (isAffiliate)
           {
-            // Verify this affiliate has access to this customer's orders
-            var customersByAffiliate = await _customerService.GetCustomersByReferrerAsync(ReferenceUserId);
-            if (!customersByAffiliate.Any(c => c.CustomerId == order.CustomerId))
+            // Verify this affiliate is the referrer for the user
+            if (user == null || user.CreatedBy != currentUserId)
             {
               return new JsonResult(new { success = false, message = "Not authorized" });
             }
@@ -224,10 +219,7 @@ namespace AspnetCoreMvcFull.Controllers
           else
           {
             // Regular user can only see their own orders
-            if (customer?.ReferenceUserId != ReferenceUserId)
-            {
-              return new JsonResult(new { success = false, message = "Not authorized" });
-            }
+            return new JsonResult(new { success = false, message = "Not authorized" });
           }
         }
 
@@ -238,7 +230,7 @@ namespace AspnetCoreMvcFull.Controllers
         foreach (var detail in orderDetails)
         {
           // Get product name
-          var product = await _productService.GetByIdAsync(detail.ProductId);
+          var product = await _productService.GetProductById(detail.ProductId);
           string productName = product?.Name ?? "Unknown Product";
 
           detailsList.Add(new
@@ -254,11 +246,11 @@ namespace AspnetCoreMvcFull.Controllers
 
         // Get commissions if user is an affiliate
         var commissionsList = new List<object>();
-        decimal totalCommission = 0;
+        double totalCommission = 0;
 
         if (isAffiliate)
         {
-          var affiliate = await _affiliateService.GetAffiliateByUserIdAsync(ReferenceUserId);
+          var affiliate = await _affiliateService.GetAffiliateByUserIdAsync(currentUserId);
           if (affiliate != null)
           {
             var commissions = await _orderService.GetOrderCommissionsAsync(id);
@@ -279,22 +271,18 @@ namespace AspnetCoreMvcFull.Controllers
           }
         }
 
-        // Get customer name
-        string customerName = "Unknown";
-        if (customer != null)
+        // Get user name
+        string userName = "Unknown";
+        if (user != null)
         {
-          var user = await _userService.GetByIdAsync(customer.ReferenceUserId);
-          if (user != null)
-          {
-            customerName = $"{user.FirstName} {user.LastName}";
-          }
+          userName = $"{user.FirstName} {user.LastName}";
         }
 
         return new JsonResult(new
         {
           success = true,
           order,
-          customerName,
+          userName,
           orderDetails = detailsList,
           commissions = commissionsList,
           totalCommission
@@ -308,46 +296,18 @@ namespace AspnetCoreMvcFull.Controllers
     }
 
     [HttpGet]
-    public async Task<IActionResult> Create(string customerId = null)
+    [RoleAuthorize("Admin")]
+    public async Task<IActionResult> Create()
     {
       try
       {
         // Load available products for order creation
-        var products = await _productService.GetAllAsync();
+        var products = await _productService.GetAllProducts();
         ViewBag.Products = products;
 
-        // If customerId is provided, pre-select the customer
-        if (!string.IsNullOrEmpty(customerId))
-        {
-          var customer = await _customerService.GetByIdAsync(customerId);
-          if (customer != null)
-          {
-            ViewBag.SelectedCustomerId = customerId;
-            var user = await _userService.GetByIdAsync(customer.ReferenceUserId);
-            if (user != null)
-            {
-              ViewBag.SelectedCustomerName = $"{user.FirstName} {user.LastName}";
-            }
-          }
-        }
-        else
-        {
-          // Load available customers for order creation
-          var customers = await _customerService.GetAllAsync();
-          ViewBag.Customers = customers;
-
-          // For each customer, get the user information
-          var customerUsers = new Dictionary<string, string>();
-          foreach (var customer in customers)
-          {
-            var user = await _userService.GetByIdAsync(customer.ReferenceUserId);
-            if (user != null)
-            {
-              customerUsers[customer.CustomerId] = $"{user.FirstName} {user.LastName}";
-            }
-          }
-          ViewBag.CustomerUsers = customerUsers;
-        }
+        // Load available users
+        var users = await _userService.GetAllAsync();
+        ViewBag.Users = users;
 
         return View();
       }
@@ -368,51 +328,42 @@ namespace AspnetCoreMvcFull.Controllers
         if (!ModelState.IsValid)
         {
           // Re-populate the dropdown lists
-          var products = await _productService.GetAllAsync();
+          var products = await _productService.GetAllProducts();
           ViewBag.Products = products;
-          var customers = await _customerService.GetAllAsync();
-          ViewBag.Customers = customers;
+          var users = await _userService.GetAllAsync();
+          ViewBag.Users = users;
 
           return View(model);
         }
 
-        // Create order
-        var order = new Order
-        {
-          CustomerId = model.CustomerId,
-          OrderDate = Timestamp.FromDateTime(DateTime.UtcNow),
-          Status = "Pending",
-          CreatedAt = Timestamp.FromDateTime(DateTime.UtcNow),
-          UpdatedAt = Timestamp.FromDateTime(DateTime.UtcNow)
-        };
-
-        // Create order details from selected products
-        var orderDetails = new List<OrderDetail>();
+        // Convert order items to cart items
+        var cartItems = new List<CartItem>();
         foreach (var item in model.OrderItems)
         {
-          var product = await _productService.GetByIdAsync(item.ProductId);
+          var product = await _productService.GetProductById(item.ProductId);
           if (product != null && item.Quantity > 0)
           {
-            var orderDetail = new OrderDetail
+            // Convert the double price to double explicitly
+            cartItems.Add(new CartItem
             {
               ProductId = item.ProductId,
-              Quantity = item.Quantity,
-              Price = product.Price,
-              SubTotal = product.Price * item.Quantity,
-              CreatedAt = Timestamp.FromDateTime(DateTime.UtcNow)
-            };
-            orderDetails.Add(orderDetail);
+              Name = product.Name,
+              ImageUrl = product.Image?.FirstOrDefault() ?? "",
+              Price = product.Price,  // Explicit conversion
+              Quantity = item.Quantity
+            });
+
           }
         }
 
-        if (orderDetails.Count == 0)
+        if (cartItems.Count == 0)
         {
           ModelState.AddModelError("", "No valid products were selected for this order.");
           return View(model);
         }
 
-        // Save order
-        string orderId = await _orderService.CreateOrderAsync(order, orderDetails);
+        // Create order
+        string orderId = await _orderService.CreateOrderAsync(model.UserId, cartItems);
 
         // Redirect to order details
         TempData["SuccessMessage"] = "Order created successfully.";
@@ -424,15 +375,14 @@ namespace AspnetCoreMvcFull.Controllers
         ModelState.AddModelError("", "An error occurred while creating the order. Please try again.");
 
         // Re-populate the dropdown lists
-        var products = await _productService.GetAllAsync();
+        var products = await _productService.GetAllProducts();
         ViewBag.Products = products;
-        var customers = await _customerService.GetAllAsync();
-        ViewBag.Customers = customers;
+        var users = await _userService.GetAllAsync();
+        ViewBag.Users = users;
 
         return View(model);
       }
     }
-
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -446,25 +396,17 @@ namespace AspnetCoreMvcFull.Controllers
         }
 
         // Validate that the user has permission to update this order
-        var ReferenceUserId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+        var currentUserId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
         var isAdmin = User.Claims.Any(c => c.Type == ClaimTypes.Role && c.Value == "Admin");
 
-        if (string.IsNullOrEmpty(ReferenceUserId) && !isAdmin)
+        if (string.IsNullOrEmpty(currentUserId) && !isAdmin)
         {
           return Unauthorized();
         }
 
-        bool success = await _orderService.UpdateOrderStatusAsync(orderId, status);
-        if (success)
-        {
-          TempData["SuccessMessage"] = "Order status updated successfully.";
-          return RedirectToAction("Details", new { id = orderId });
-        }
-        else
-        {
-          TempData["ErrorMessage"] = "Failed to update order status.";
-          return RedirectToAction("Details", new { id = orderId });
-        }
+        await _orderService.UpdateOrderStatusAsync(orderId, status);
+        TempData["SuccessMessage"] = "Order status updated successfully.";
+        return RedirectToAction("Details", new { id = orderId });
       }
       catch (Exception ex)
       {
@@ -474,19 +416,16 @@ namespace AspnetCoreMvcFull.Controllers
       }
     }
 
-
-
-
     [HttpGet]
     public async Task<JsonResult> GetOrdersData(int draw = 1, int start = 0, int length = 10, string search = "")
     {
       try
       {
         // Get current user
-        var ReferenceUserId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+        var currentUserId = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
 
         // If not authenticated, return error
-        if (string.IsNullOrEmpty(ReferenceUserId))
+        if (string.IsNullOrEmpty(currentUserId))
         {
           return new JsonResult(new { error = "Not authenticated" });
         }
@@ -504,26 +443,18 @@ namespace AspnetCoreMvcFull.Controllers
         }
         else if (isAffiliate)
         {
-          // Affiliates can see orders from their customers
-          var affiliate = await _affiliateService.GetAffiliateByUserIdAsync(ReferenceUserId);
-          if (affiliate != null)
+          // Get customers referred by this affiliate
+          var customers = await _customerService.GetCustomersByReferrerAsync(currentUserId);
+          foreach (var customer in customers)
           {
-            var customers = await _customerService.GetCustomersByReferrerAsync(ReferenceUserId);
-            foreach (var customer in customers)
-            {
-              var customerOrders = await _orderService.GetOrdersByCustomerIdAsync(customer.CustomerId);
-              allOrders.AddRange(customerOrders);
-            }
+            var userOrders = await _orderService.GetOrdersByUserIdAsync(customer.ReferenceUserId);
+            allOrders.AddRange(userOrders);
           }
         }
         else
         {
           // Regular users see their own orders
-          var customer = await _customerService.GetCustomerByUserIdAsync(ReferenceUserId);
-          if (customer != null)
-          {
-            allOrders = await _orderService.GetOrdersByCustomerIdAsync(customer.CustomerId);
-          }
+          allOrders = await _orderService.GetOrdersByUserIdAsync(currentUserId);
         }
 
         // Apply search if provided
@@ -547,21 +478,17 @@ namespace AspnetCoreMvcFull.Controllers
         var orderData = new List<object>();
         foreach (var order in pagedOrders)
         {
-          // Get customer name
-          var customer = await _customerService.GetByIdAsync(order.CustomerId);
-          string customerName = "Unknown";
-          if (customer != null)
+          // Get user name
+          var user = await _userService.GetByIdAsync(order.UserId);
+          string userName = "Unknown";
+          if (user != null)
           {
-            var user = await _userService.GetByIdAsync(customer.ReferenceUserId);
-            if (user != null)
-            {
-              customerName = $"{user.FirstName} {user.LastName}";
-            }
+            userName = $"{user.FirstName} {user.LastName}";
           }
 
           // Get order details for amount calculation
           var orderDetails = await _orderService.GetOrderDetailsAsync(order.OrderId);
-          decimal totalAmount = orderDetails.Sum(d => d.SubTotal);
+          double totalAmount = orderDetails.Sum(d => d.SubTotal);
 
           // Determine payment status based on order status
           string paymentStatus = "Unpaid";
@@ -582,10 +509,10 @@ namespace AspnetCoreMvcFull.Controllers
             id = order.OrderId,
             order_id = order.OrderId,
             date = orderDate.ToString("MMM dd, yyyy"),
-            customer = customerName,
+            customer = userName,
             payment = paymentStatus,
             status = order.Status,
-            method = "Credit Card", // You might want to add payment method to your order model
+            method = "Credit Card", // This is a placeholder
             total = totalAmount.ToString("C")
           });
         }
@@ -628,22 +555,18 @@ namespace AspnetCoreMvcFull.Controllers
         }
         else if (isAffiliate)
         {
-          // Affiliates see stats only for their referred customers
+          // Get customers referred by this affiliate
           var customers = await _customerService.GetCustomersByReferrerAsync(userId);
           foreach (var customer in customers)
           {
-            var customerOrders = await _orderService.GetOrdersByCustomerIdAsync(customer.CustomerId);
-            allOrders.AddRange(customerOrders);
+            var userOrders = await _orderService.GetOrdersByUserIdAsync(customer.ReferenceUserId);
+            allOrders.AddRange(userOrders);
           }
         }
         else
         {
           // Regular users see stats for their own orders
-          var customer = await _customerService.GetCustomerByUserIdAsync(userId);
-          if (customer != null)
-          {
-            allOrders = await _orderService.GetOrdersByCustomerIdAsync(customer.CustomerId);
-          }
+          allOrders = await _orderService.GetOrdersByUserIdAsync(userId);
         }
 
         // Count orders by status
@@ -653,12 +576,12 @@ namespace AspnetCoreMvcFull.Controllers
         int failed = allOrders.Count(o => o.Status == "Failed" || o.Status == "Cancelled");
 
         // Calculate total sales
-        decimal totalSales = allOrders
+        double totalSales = allOrders
             .Where(o => o.Status == "Completed" || o.Status == "Delivered")
             .Sum(o => o.TotalAmount);
 
         // Monthly sales data (last 6 months)
-        var monthlySales = new Dictionary<string, decimal>();
+        var monthlySales = new Dictionary<string, double>();
         var today = DateTime.UtcNow;
 
         for (int i = 0; i < 6; i++)
@@ -702,7 +625,7 @@ namespace AspnetCoreMvcFull.Controllers
         var topProductsWithNames = new List<object>();
         foreach (var product in topProducts)
         {
-          var productInfo = await _productService.GetByIdAsync(product.ProductId);
+          var productInfo = await _productService.GetProductById(product.ProductId);
           topProductsWithNames.Add(new
           {
             product.ProductId,
@@ -738,8 +661,6 @@ namespace AspnetCoreMvcFull.Controllers
         };
       }
     }
-
-
 
     [HttpPost]
     public async Task<JsonResult> Delete(string id)
@@ -779,8 +700,6 @@ namespace AspnetCoreMvcFull.Controllers
         return new JsonResult(new { success = false, message = "An error occurred while deleting the order." });
       }
     }
-
-
   }
-
 }
+

@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using AspnetCoreMvcFull.Services;
 using AspnetCoreMvcFull.DTO;
+using Google.Cloud.Firestore;
 
 namespace AspnetCoreMvcFull.Controllers
 {
@@ -41,7 +42,7 @@ namespace AspnetCoreMvcFull.Controllers
         try
         {
           // Set creation timestamp
-          address.CreatedAt = DateTime.UtcNow;
+          address.CreatedAt = Timestamp.FromDateTime(DateTime.UtcNow);
 
           // Add address
           await _addressService.AddAddressAsync(address);
@@ -59,9 +60,9 @@ namespace AspnetCoreMvcFull.Controllers
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateAddress([Bind("FirestoreId,UserId,Country,City,Governorate,Town,Street,Building,Floor,Landmark")] Address address)
+    public async Task<IActionResult> UpdateAddress([Bind("AddressId,UserId,Country,City,Governorate,Town,Street,Building,Floor,Landmark")] Address address)
     {
-      if (string.IsNullOrEmpty(address.FirestoreId))
+      if (string.IsNullOrEmpty(address.AddressId))
       {
         return Json(new { success = false, message = "Address ID is required" });
       }

@@ -1,4 +1,3 @@
-@model AspnetCoreMvcFull.DTO.Product
 @{
     ViewData["Title"] = "Add Product - eCommerce";
 }
@@ -6,15 +5,38 @@
 @section VendorStyles {
     <link rel="stylesheet" href="~/vendor/libs/dropzone/dropzone.css" />
     <link rel="stylesheet" href="~/vendor/libs/select2/select2.css" />
+    <link rel="stylesheet" href="~/vendor/libs/toastr/toastr.css" />
 }
 
 @section VendorScripts {
     <script src="~/vendor/libs/dropzone/dropzone.js"></script>
     <script src="~/vendor/libs/select2/select2.js"></script>
+    <script src="~/vendor/libs/toastr/toastr.js"></script>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 }
 
+<script>
+    // Pass Firebase configuration from server to client
+    const firebaseConfig = {
+        apiKey: "@ViewBag.FirebaseApiKey",
+        authDomain: "@ViewBag.FirebaseProjectId" + ".firebaseapp.com",
+        projectId: "@ViewBag.FirebaseProjectId",
+        storageBucket: "@ViewBag.FirebaseStorageBucket",
+        messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+        appId: "@ViewBag.FirebaseAppId"
+    };
+
+    // For debugging
+    console.log("Firebase config:", firebaseConfig);
+</script>
+<script src="~/js/app-ecommerce-product-add.js"></script>
+
 <div class="app-ecommerce">
-    <form id="productForm" method="post" asp-action="ProductAdd">
+    <form id="productForm" method="post">
         <div class="card mb-4">
             <div class="card-header">
                 <h5 class="card-title">Product Information</h5>
@@ -23,68 +45,60 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label" for="Name">Name</label>
-                        <input type="text" class="form-control" id="Name" name="Name" asp-for="Name" required />
-                        <span asp-validation-for="Name" class="text-danger"></span>
+                        <input type="text" class="form-control" id="Name" name="Name" required />
+                        <div class="invalid-feedback">Please enter a product name</div>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label" for="SKU">SKU</label>
-                        <input type="text" class="form-control" id="SKU" name="SKU" asp-for="SKU" />
-                        <span asp-validation-for="SKU" class="text-danger"></span>
+                        <input type="text" class="form-control" id="SKU" name="SKU" />
+                        <div class="invalid-feedback">Please enter a valid SKU</div>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="Description">Description</label>
-                    <textarea class="form-control" id="Description" name="Description" asp-for="Description" rows="4"></textarea>
-                    <span asp-validation-for="Description" class="text-danger"></span>
+                    <textarea class="form-control" id="Description" name="Description" rows="4"></textarea>
                 </div>
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label" for="Price">Price</label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" id="Price" name="Price" asp-for="Price" step="0.01" required />
+                            <input type="number" class="form-control" id="Price" name="Price" step="0.01" required />
+                            <div class="invalid-feedback">Please enter a valid price</div>
                         </div>
-                        <span asp-validation-for="Price" class="text-danger"></span>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label" for="Stock">Stock</label>
-                        <input type="number" class="form-control" id="Stock" name="Stock" asp-for="Stock" required />
-                        <span asp-validation-for="Stock" class="text-danger"></span>
+                        <input type="number" class="form-control" id="Stock" name="Stock" required />
+                        <div class="invalid-feedback">Please enter a valid stock quantity</div>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label" for="Discount">Discount (%)</label>
-                        <input type="number" class="form-control" id="Discount" name="Discount" asp-for="Discount" min="0" max="100" />
-                        <span asp-validation-for="Discount" class="text-danger"></span>
+                        <input type="number" class="form-control" id="Discount" name="Discount" min="0" max="100" value="0" />
+                        <div class="invalid-feedback">Please enter a valid discount (0-100)</div>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label" for="BrandId">Brand</label>
-                        <select class="form-select select2" id="BrandId" name="BrandId" asp-for="BrandId">
+                        <select class="form-select select2" id="BrandId" name="BrandId" required>
                             <option value="">Select Brand</option>
-                            @if (ViewBag.Brands != null)
-                            {
-                                @foreach (var brand in ViewBag.Brands)
-                                {
-                                    <option value="@brand.BrandId">@brand.Name</option>
-                                }
-                            }
+                            <!-- Brands will be populated dynamically -->
                         </select>
-                        <span asp-validation-for="BrandId" class="text-danger"></span>
+                        <div class="invalid-feedback">Please select a brand</div>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label" for="CategoryId">Category</label>
-                        <select class="form-select select2" id="CategoryId" name="CategoryId" asp-for="CategoryId">
+                        <select class="form-select select2" id="CategoryId" name="CategoryId" required>
                             <option value="">Select Category</option>
-                            @if (ViewBag.Categories != null)
-                            {
-                                @foreach (var category in ViewBag.Categories)
-                                {
-                                    <option value="@category.CategoryId">@category.Name</option>
-                                }
-                            }
+                            <!-- Categories will be populated dynamically -->
                         </select>
-                        <span asp-validation-for="CategoryId" class="text-danger"></span>
+                        <div class="invalid-feedback">Please select a category</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label" for="Commission">Commission (%)</label>
+                        <input type="number" class="form-control" id="Commission" name="Commission" min="0" max="100" value="30" />
+                        <div class="invalid-feedback">Please enter a valid commission (0-100)</div>
                     </div>
                 </div>
             </div>
@@ -93,102 +107,23 @@
         <div class="card mb-4">
             <div class="card-header">
                 <h5 class="card-title">Product Images</h5>
+                <small class="text-muted">Images will be stored in folders based on brand and category</small>
             </div>
             <div class="card-body">
                 <div class="dropzone" id="productImages"></div>
-                <input type="hidden" id="productImagesJson" name="ImagesJson" />
+                <input type="hidden" id="imagesJson" name="imagesJson" />
+                <div class="mt-2">
+                    <small class="text-muted">Supported formats: JPG, PNG, GIF. Maximum file size: 5MB.</small>
+                </div>
             </div>
         </div>
 
         <div class="text-end mb-4">
             <a href="/Ecommerce/ProductList" class="btn btn-outline-secondary me-2">Cancel</a>
-            <button type="submit" class="btn btn-primary">Save Product</button>
+            <button type="submit" class="btn btn-primary" id="saveProductBtn">Save Product</button>
         </div>
     </form>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        console.log("DOM loaded, initializing components...");
 
-        // Debug brands and categories
-        console.log("Brands:", @Html.Raw(Json.Serialize(ViewBag.Brands ?? new List<object>())));
-        console.log("Categories:", @Html.Raw(Json.Serialize(ViewBag.Categories ?? new List<object>())));
 
-        // Initialize Select2
-        $('.select2').select2();
-        console.log("Select2 initialized");
-
-        // Initialize Dropzone
-        let uploadedImages = [];
-        const myDropzone = new Dropzone("#productImages", {
-            url: "/Upload",
-            paramName: "file",
-            maxFilesize: 5, // MB
-            acceptedFiles: "image/*",
-            addRemoveLinks: true,
-            dictRemoveFile: "Remove",
-            init: function () {
-                console.log("Dropzone initialized");
-                this.on("success", function (file, response) {
-                    console.log("File uploaded successfully:", response);
-                    // Store the Firebase Storage URL
-                    uploadedImages.push(response.path);
-                    document.getElementById("productImagesJson").value = JSON.stringify(uploadedImages);
-                    console.log("Updated images JSON:", document.getElementById("productImagesJson").value);
-
-                    // Add the file ID to the file object for later reference
-                    file.firebaseUrl = response.path;
-                });
-
-                this.on("removedfile", function (file) {
-                    console.log("File removed:", file);
-                    // Remove from Firebase Storage
-                    if (file.firebaseUrl) {
-                        fetch('/Upload?filename=' + encodeURIComponent(file.firebaseUrl), {
-                            method: 'DELETE'
-                        });
-
-                        // Remove from our array
-                        const index = uploadedImages.indexOf(file.firebaseUrl);
-                        if (index > -1) {
-                            uploadedImages.splice(index, 1);
-                            document.getElementById("productImagesJson").value = JSON.stringify(uploadedImages);
-                            console.log("Updated images JSON after removal:", document.getElementById("productImagesJson").value);
-                        }
-                    }
-                });
-            }
-        });
-
-        // Add brand change event to load categories
-        $('#BrandId').on('change', function() {
-            const brandId = $(this).val();
-            console.log("Brand selected:", brandId);
-
-            if (brandId) {
-                // Clear current categories
-                $('#CategoryId').empty().append('<option value="">Loading categories...</option>');
-
-                // Fetch categories for selected brand
-                fetch(`/Ecommerce/GetCategoriesByBrand?brandId=${brandId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log("Categories loaded:", data);
-                        $('#CategoryId').empty().append('<option value="">Select Category</option>');
-                        data.forEach(category => {
-                            $('#CategoryId').append(`<option value="${category.categoryId}">${category.name}</option>`);
-                        });
-                        $('#CategoryId').trigger('change');
-                    })
-                    .catch(error => {
-                        console.error('Error loading categories:', error);
-                        $('#CategoryId').empty().append('<option value="">Error loading categories</option>');
-                    });
-            } else {
-                // If no brand selected, clear categories
-                $('#CategoryId').empty().append('<option value="">Select Category</option>');
-            }
-        });
-    });
-</script>

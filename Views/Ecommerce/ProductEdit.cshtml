@@ -1,119 +1,130 @@
-@model AspnetCoreMvcFull.DTO.Product
-
 @{
-  ViewData["Title"] = "Edit Product - eCommerce";
+    ViewData["Title"] = "Edit Product - eCommerce";
 }
 
 @section VendorStyles {
-<link rel="stylesheet" href="~/vendor/libs/quill/typography.css">
-<link rel="stylesheet" href="~/vendor/libs/quill/katex.css">
-<link rel="stylesheet" href="~/vendor/libs/quill/editor.css">
-<link rel="stylesheet" href="~/vendor/libs/select2/select2.css">
-<link rel="stylesheet" href="~/vendor/libs/dropzone/dropzone.css">
-<link rel="stylesheet" href="~/vendor/libs/flatpickr/flatpickr.css">
-<link rel="stylesheet" href="~/vendor/libs/tagify/tagify.css" />
+    <link rel="stylesheet" href="~/vendor/libs/quill/typography.css">
+    <link rel="stylesheet" href="~/vendor/libs/quill/katex.css">
+    <link rel="stylesheet" href="~/vendor/libs/quill/editor.css">
+    <link rel="stylesheet" href="~/vendor/libs/select2/select2.css">
+    <link rel="stylesheet" href="~/vendor/libs/dropzone/dropzone.css">
+    <link rel="stylesheet" href="~/vendor/libs/flatpickr/flatpickr.css">
+    <link rel="stylesheet" href="~/vendor/libs/tagify/tagify.css" />
+    <link rel="stylesheet" href="~/vendor/libs/toastr/toastr.css">
 }
 
 @section VendorScripts {
-<script src="~/vendor/libs/quill/katex.js"></script>
-<script src="~/vendor/libs/quill/quill.js"></script>
-<script src="~/vendor/libs/select2/select2.js"></script>
-<script src="~/vendor/libs/dropzone/dropzone.js"></script>
-<script src="~/vendor/libs/jquery-repeater/jquery-repeater.js"></script>
-<script src="~/vendor/libs/flatpickr/flatpickr.js"></script>
-<script src="~/vendor/libs/tagify/tagify.js"></script>
+    <script src="~/vendor/libs/quill/katex.js"></script>
+    <script src="~/vendor/libs/quill/quill.js"></script>
+    <script src="~/vendor/libs/select2/select2.js"></script>
+    <script src="~/vendor/libs/dropzone/dropzone.js"></script>
+    <script src="~/vendor/libs/jquery-repeater/jquery-repeater.js"></script>
+    <script src="~/vendor/libs/flatpickr/flatpickr.js"></script>
+    <script src="~/vendor/libs/tagify/tagify.js"></script>
+    <script src="~/vendor/libs/toastr/toastr.js"></script>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 }
 
-@section PageScripts {
-<script src="~/js/app-ecommerce-product-add.js"></script>
-}
+<script>
+    // Pass Firebase configuration from server to client
+    const firebaseConfig = {
+        apiKey: "@ViewBag.FirebaseApiKey",
+        authDomain: "@ViewBag.FirebaseProjectId" + ".firebaseapp.com",
+        projectId: "@ViewBag.FirebaseProjectId",
+        storageBucket: "@ViewBag.FirebaseStorageBucket",
+        messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+        appId: "@ViewBag.FirebaseAppId"
+    };
+
+    // Get product ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const productId = urlParams.get('id');
+
+    // For debugging
+    console.log("Firebase config:", firebaseConfig);
+    console.log("Product ID:", productId);
+</script>
 
 <div class="app-ecommerce">
-  <form asp-action="Edit" method="post" enctype="multipart/form-data">
-    <input type="hidden" asp-for="ProductId" />
-    <input type="hidden" asp-for="CreatedAt" />
-    
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-6 row-gap-4">
-      <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1">Edit Product</h4>
-        <p class="mb-0">Update product details and inventory information</p>
-      </div>
-      <div class="d-flex align-content-center flex-wrap gap-4">
-        <div class="d-flex gap-4">
-          <a asp-action="List" class="btn btn-label-secondary">Cancel</a>
-          <button type="submit" class="btn btn-primary">Save Changes</button>
-        </div>
-      </div>
-    </div>
+    <form id="productForm">
+        <input type="hidden" id="ProductId" name="ProductId" />
+        <input type="hidden" id="CreatedAt" name="CreatedAt" />
 
-    <div class="row">
-      <!-- First column-->
-      <div class="col-12 col-lg-8">
-        <!-- Product Information -->
-        <div class="card mb-6">
-          <div class="card-header">
-            <h5 class="card-tile mb-0">Product information</h5>
-          </div>
-          <div class="card-body">
-            <div class="mb-6">
-              <label asp-for="Name" class="form-label">Name</label>
-              <input asp-for="Name" class="form-control" placeholder="Product name" required />
-              <span asp-validation-for="Name" class="text-danger"></span>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-6 row-gap-4">
+            <div class="d-flex flex-column justify-content-center">
+                <h4 class="mb-1">Edit Product</h4>
+                <p class="mb-0">Update product details and inventory information</p>
             </div>
-            <div class="row mb-6">
-              <div class="col">
-                <label asp-for="SKU" class="form-label">SKU</label>
-                <input asp-for="SKU" class="form-control" placeholder="SKU" required />
-                <span asp-validation-for="SKU" class="text-danger"></span>
-              </div>
+            <div class="d-flex align-content-center flex-wrap gap-4">
+                <div class="d-flex gap-4">
+                    <a href="/Ecommerce/ProductList" class="btn btn-label-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary" id="saveProductBtn">Save Changes</button>
+                </div>
             </div>
-            <!-- Description -->
-            <div>
-              <label asp-for="Description" class="mb-1">Description</label>
-              <textarea asp-for="Description" class="form-control" rows="5" placeholder="Product description"></textarea>
-              <span asp-validation-for="Description" class="text-danger"></span>
-            </div>
-          </div>
         </div>
-        <!-- /Product Information -->
 
-        <!-- Media -->
-        <div class="card mb-6">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 card-title">Product Image</h5>
-          </div>
-          <div class="card-body">
-            <form action="/upload" class="dropzone needsclick p-0" id="dropzone-basic">
-              <div class="dz-message needsclick">
-                <p class="h4 needsclick pt-3 mb-2">Drag and drop your image here</p>
-                <p class="h6 text-muted d-block fw-normal mb-2">or</p>
-                <span class="note needsclick btn btn-sm btn-label-primary" id="btnBrowse">Browse image</span>
-              </div>
-              <div class="fallback">
-                <input name="file" type="file" />
-              </div>
-            </form>
-          </div>
-        </div>
-        <!-- /Media -->
-
-        <!-- Inventory -->
-        <div class="card mb-6">
-          <div class="card-header">
+        <div class="row">
+            <!-- First column-->
+            <div class="col-12 col-lg-8">
+                <!-- Product Information -->
+                <div class="card mb-6">
+                    <div class="card-header">
+                        <h5 class="card-tile mb-0">Product information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-6">
+                            <label for="Name" class="form-label">Name</label>
+                            <input id="Name" name="Name" class="form-control" placeholder="Product name" required />
+                        </div>
+                        <div class="row mb-6">
+                            <div class="col">
+                                <label for="SKU" class="form-label">SKU</label>
+                                <input id="SKU" name="SKU" class="form-control" placeholder="SKU" required />
+                            </div>
+                        </div>
+                        <!-- Description -->
+                        <div>
+                            <label for="Description" class="mb-1">Description</label>
+                            <textarea id="Description" name="Description" class="form-control" rows="5" placeholder="Product description"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Product Information -->
+                <!-- Media -->
+                <div class="card mb-6">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 card-title">Product Image</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="dropzone needsclick p-0" id="productImages">
+                            <div class="dz-message needsclick">
+                                <p class="h4 needsclick pt-3 mb-2">Drag and drop your image here</p>
+                                <p class="h6 text-muted d-block fw-normal mb-2">or</p>
+                                <span class="note needsclick btn btn-sm btn-label-primary" id="btnBrowse">Browse image</span>
+                            </div>
+                            <div class="fallback">
+                                <input name="file" type="file" />
+                            </div>
+                        </div>
+                        <input type="hidden" id="imagesJson" name="imagesJson" />
+                    </div>
+                </div>
+                <!-- /Media -->
+                <!-- Inventory -->
+                <div class="card mb-6">
+                    <div class="card-header">
                         <h5 class="card-title mb-0">Inventory</h5>
                     </div>
                     <div class="card-body">
                         <div class="row mb-6">
                             <div class="col-md-6">
-                                <label asp-for="Stock" class="form-label">Quantity in Stock</label>
-                                <input asp-for="Stock" type="number" class="form-control" min="0" />
-                                <span asp-validation-for="Stock" class="text-danger"></span>
+                                <label for="Stock" class="form-label">Quantity in Stock</label>
+                                <input id="Stock" name="Stock" type="number" class="form-control" min="0" />
                             </div>
-                       @*      <div class="col-md-6">
-                                <label asp-for="QuantityOrdered" class="form-label">Quantity Ordered</label>
-                                <input asp-for="QuantityOrdered" type="number" class="form-control" min="0" />
-                                <span asp-validation-for="QuantityOrdered" class="text-danger"></span>
-                            </div> *@
                         </div>
                     </div>
                 </div>
@@ -130,21 +141,18 @@
                     <div class="card-body">
                         <!-- Base Price -->
                         <div class="mb-6">
-                            <label asp-for="Price" class="form-label">Base Price</label>
-                            <input asp-for="Price" type="number" step="0.01" class="form-control" placeholder="Price" required />
-                            <span asp-validation-for="Price" class="text-danger"></span>
+                            <label for="Price" class="form-label">Base Price</label>
+                            <input id="Price" name="Price" type="number" step="0.01" class="form-control" placeholder="Price" required />
                         </div>
                         <!-- Discounted Price -->
                         <div class="mb-6">
-                            <label asp-for="Discount" class="form-label">Discount</label>
-                            <input asp-for="Discount" type="number" step="0.01" class="form-control" placeholder="Discount" />
-                            <span asp-validation-for="Discount" class="text-danger"></span>
+                            <label for="Discount" class="form-label">Discount</label>
+                            <input id="Discount" name="Discount" type="number" step="0.01" class="form-control" placeholder="Discount" />
                         </div>
                         <!-- Commission Rate -->
                         <div class="mb-6">
-                            <label asp-for="Commission" class="form-label">Commission Rate (%)</label>
-                            <input asp-for="Commission" type="number" step="0.01" class="form-control" placeholder="Commission Rate" />
-                            <span asp-validation-for="Commission" class="text-danger"></span>
+                            <label for="Commission" class="form-label">Commission Rate (%)</label>
+                            <input id="Commission" name="Commission" type="number" step="0.01" class="form-control" placeholder="Commission Rate" />
                             <small class="text-muted">This will be auto-filled based on the selected brand</small>
                         </div>
                     </div>
@@ -158,31 +166,19 @@
                     <div class="card-body">
                         <!-- Brand -->
                         <div class="mb-6 col ecommerce-select2-dropdown">
-                            <label asp-for="BrandId" class="form-label mb-1">Brand</label>
-                            <select asp-for="BrandId" asp-items="ViewBag.Brands" class="select2 form-select" data-placeholder="Select Brand" id="brand-select">
+                            <label for="BrandId" class="form-label mb-1">Brand</label>
+                            <select id="BrandId" name="BrandId" class="select2 form-select" data-placeholder="Select Brand">
                                 <option value="">Select Brand</option>
                             </select>
-                            <span asp-validation-for="BrandId" class="text-danger"></span>
                         </div>
 
                         <!-- Category -->
                         <div class="mb-6 col ecommerce-select2-dropdown">
-                            <label asp-for="CategoryId" class="form-label mb-1">Category</label>
-                            <select asp-for="CategoryId" asp-items="ViewBag.Categories" class="select2 form-select" data-placeholder="Select Category">
+                            <label for="CategoryId" class="form-label mb-1">Category</label>
+                            <select id="CategoryId" name="CategoryId" class="select2 form-select" data-placeholder="Select Category">
                                 <option value="">Select Category</option>
                             </select>
-                            <span asp-validation-for="CategoryId" class="text-danger"></span>
                         </div>
-
-                        <!-- Collection -->
-                   @*      <div class="mb-6 col ecommerce-select2-dropdown">
-                            <label asp-for="CollectionId" class="form-label mb-1">Collection</label>
-                            <select asp-for="CollectionId" class="select2 form-select" data-placeholder="Select Collection">
-                                <option value="">Select Collection</option>
-                                <!-- Collections will be populated dynamically -->
-                            </select>
-                            <span asp-validation-for="CollectionId" class="text-danger"></span>
-                        </div> *@
                     </div>
                 </div>
                 <!-- /Organize Card -->
@@ -192,3 +188,4 @@
     </form>
 </div>
 
+<script src="~/js/app-ecommerce-product-add.js"></script>
