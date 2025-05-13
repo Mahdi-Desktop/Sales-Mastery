@@ -1,128 +1,673 @@
 @{
-    ViewData["Title"] = "Referred Customers";
-}
-
-@section VendorScripts {
-    <script src="~/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+    ViewData["Title"] = "Customers";
+    Layout = "_ContentNavbarLayout";
 }
 
 @section PageScripts {
-    <script src="~/js/affiliate-customers.js"></script>
+    <!-- Firebase Libraries -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- Data Tables -->
+    <script src="~/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+
+    <!-- Our Services -->
+    @* <script src="~/js/firebase-init.js"></script> *@
+    <script src="~/js/services/firebaseService.js"></script>
+    <script src="~/js/services/customerService.js"></script>
+
+    <script>
+        let dataTable;
+        let affiliateId;
+        let currentAffiliate; // Store the full affiliate object
+
+        // Initialize Firebase and load data
+        document.addEventListener('DOMContentLoaded', async function () {
+            const firebaseConfig = {
+                apiKey: "@ViewBag.FirebaseApiKey",
+                authDomain: "@ViewBag.FirebaseAuthDomain",
+                projectId: "@ViewBag.FirebaseProjectId",
+                storageBucket: "@ViewBag.FirebaseStorageBucket",
+                messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+                appId: "@ViewBag.FirebaseAppId"
+            };
+
+            // Initialize services
+            firebaseService.init(firebaseConfig);
+
+            try {
+                const userId = "@ViewBag.UserId";
+                const affiliate = await firebaseService.getAffiliateByUserId(userId);
+
+                if (!affiliate) {
+                    showError("Could not find affiliate record");
+                    return;
+                }
+
+                affiliateId = affiliate.affiliateId;
+                currentAffiliate = affiliate; // Store full affiliate object
+
+                // Load customer stats
+                await loadCustomerStats(affiliateId);
+
+                // Load customers table
+                await loadCustomersTable(affiliateId);
+
+                // Set up add customer form
+                document.getElementById('add-customer-form').addEventListener('submit', async function (event) {
+                    event.preventDefault();
+                    await addNewCustomer();
+                });
+
+            } catch (error) {
+                console.error("Error loading customers:", error);
+                showError("Failed to load customers: " + error.message);
+            }
+        });
+
+        async function loadCustomerStats(affiliateId) {
+            try {
+                console.log("Loading customer stats for affiliate:", affiliateId);
+
+                // Query the users collection for customers referred by this affiliate
+                // Using the same query as the table for consistency
+                const snapshot = await firebase.firestore()
+                    .collection('users')
+                    .where('Role', '==', '3') // Role 3 for customers
+                    .where('ReferenceId', '==', affiliateId)
+                    .get();
+
+                const total = snapshot.size;
+                console.log(`Total customers found: ${total}`);
+
+                // Update the customer count display
+                document.getElementById('customer-count').textContent = total;
+
+                // Process customers by month for the chart
+                const customersByMonth = {};
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.CreatedAt) {
+                        const date = data.CreatedAt.toDate();
+                        const month = date.getMonth();
+                        const year = date.getFullYear();
+                        const key = `${year}-${month}`;
+
+                        if (!customersByMonth[key]) {
+                            customersByMonth[key] = 0;
+                        }
+
+                        customersByMonth[key]++;
+                    }
+                });
+
+                // Initialize chart if Chart.js is available
+                if (typeof Chart !== 'undefined' && Object.keys(customersByMonth).length > 0) {
+                    initializeChart(customersByMonth);
+                }
+
+            } catch (error) {
+                console.error("Error loading stats:", error);
+                document.getElementById('customer-count').textContent = "?";
+            }
+        }
+
+        function initializeChart(customersByMonth) {
+            const months = Object.keys(customersByMonth).map(key => {
+                const [year, month] = key.split('-');
+                return new Date(year, month).toLocaleString('default', { month: 'short' });
+            });
+
+            const values = Object.values(customersByMonth);
+
+            const ctx = document.getElementById('customers-chart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'New Customers',
+                        data: values,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Password hashing function to match the backend
+        function hashPassword(password) {
+            // Using SHA-256 hashing via SubtleCrypto API
+            return crypto.subtle.digest('SHA-256', new TextEncoder().encode(password))
+                .then(hashBuffer => {
+                    // Convert hash to hex string
+                    const hashArray = Array.from(new Uint8Array(hashBuffer));
+                    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                });
+        }
+
+        // Add new customer function
+        async function addNewCustomer() {
+            try {
+                // Show loading indicator
+                const submitButton = document.querySelector('#add-customer-form button[type="submit"]');
+                const originalButtonText = submitButton.innerHTML;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Adding...';
+                submitButton.disabled = true;
+
+                // Get form values
+                const firstName = document.getElementById('firstName').value.trim();
+                const middleName = document.getElementById('middleName').value.trim();
+                const lastName = document.getElementById('lastName').value.trim();
+                const email = document.getElementById('email').value.trim();
+                const phone = document.getElementById('phone').value.trim();
+                const password = document.getElementById('password').value;
+
+                // Validate required fields
+                if (!firstName || !lastName || !email || !password) {
+                    showError("Please fill out all required fields");
+                    submitButton.innerHTML = originalButtonText;
+                    submitButton.disabled = false;
+                    return;
+                }
+
+                // Validate password length
+                if (password.length < 6) {
+                    showError("Password must be at least 6 characters");
+                    submitButton.innerHTML = originalButtonText;
+                    submitButton.disabled = false;
+                    return;
+                }
+
+                // Check if email already exists
+                const emailCheck = await firebase.firestore()
+                    .collection('users')
+                    .where('Email', '==', email)
+                    .get();
+
+                if (!emailCheck.empty) {
+                    showError("A user with this email already exists");
+                    submitButton.innerHTML = originalButtonText;
+                    submitButton.disabled = false;
+                    return;
+                }
+
+                // Hash the password
+                const hashedPassword = await hashPassword(password);
+
+                // Create customer data object with all required fields
+                const customerData = {
+                    FirstName: firstName,
+                    MiddleName: middleName || null,
+                    LastName: lastName,
+                    Email: email,
+                    PhoneNumber: phone || null,
+                    Password: hashedPassword,
+                    Role: '3', // Role 3 for customers
+                    ReferenceId: affiliateId, // Link to the affiliate
+                    CreatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    CreatedBy: affiliateId,
+                    UpdatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    CustomerId: null,
+                    InvoiceId: null,
+                    OrderId: null
+                };
+
+                // Add customer without using a transaction - simpler approach
+                const db = firebase.firestore();
+
+                // First add the new customer
+                const customerRef = await db.collection('users').add(customerData);
+                console.log("Customer added with ID:", customerRef.id);
+
+                // Then update the affiliate's CustomerId array
+                const affiliateRef = db.collection('users').doc(affiliateId);
+                const affiliateDoc = await affiliateRef.get();
+
+                if (affiliateDoc.exists) {
+                    const affiliateData = affiliateDoc.data();
+                    let customerId = affiliateData.CustomerId || [];
+
+                    // If CustomerId is not an array (could be a single reference), convert it to array
+                    if (!Array.isArray(customerId)) {
+                        customerId = customerId ? [customerId] : [];
+                    }
+
+                    // Add the new customer reference
+                    customerId.push(customerRef);
+
+                    // Update the affiliate
+                    await affiliateRef.update({
+                        CustomerId: customerId,
+                        UpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+
+                console.log("Customer added successfully and affiliate updated");
+
+                // Show success message
+                showMessage("Customer added successfully");
+
+                // Close modal and reset form
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addCustomerModal'));
+                modal.hide();
+                document.getElementById('add-customer-form').reset();
+
+                // Refresh customer data
+                await loadCustomerStats(affiliateId);
+                await loadCustomersTable(affiliateId);
+
+            } catch (error) {
+                console.error("Error adding customer:", error);
+                showError("Failed to add customer: " + error.message);
+            } finally {
+                // Reset button state
+                const submitButton = document.querySelector('#add-customer-form button[type="submit"]');
+                submitButton.innerHTML = 'Add Customer';
+                submitButton.disabled = false;
+            }
+        }
+
+        async function loadCustomersTable(affiliateId) {
+            try {
+                console.log("Loading customers for affiliate:", affiliateId);
+
+                // Query the users collection for customers referred by this affiliate
+                // Without orderBy to avoid requiring a composite index
+                const snapshot = await firebase.firestore()
+                    .collection('users')
+                    .where('Role', '==', '3') // Role 3 for customers
+                    .where('ReferenceId', '==', affiliateId)
+                    .get();
+
+                console.log(`Found ${snapshot.size} customers`);
+
+                const customers = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    console.log("Customer data:", data);
+
+                    // Format the date
+                    let formattedDate = 'Unknown';
+                    let timestamp = null;
+                    if (data.CreatedAt) {
+                        const date = data.CreatedAt.toDate();
+                        formattedDate = date.toLocaleDateString();
+                        timestamp = date.getTime(); // For sorting
+                    }
+
+                    return {
+                        customerId: doc.id,
+                        fullName: `${data.FirstName || ''} ${data.MiddleName ? data.MiddleName + ' ' : ''}${data.LastName || ''}`.trim() || 'Unknown',
+                        Email: data.Email || '',
+                        PhoneNumber: data.PhoneNumber || '',
+                        formattedDate: formattedDate,
+                        timestamp: timestamp || 0 // For sorting
+                    };
+                });
+
+                // Sort in JavaScript instead of using Firestore orderBy
+                customers.sort((a, b) => b.timestamp - a.timestamp);
+
+                console.log("Processed and sorted customers:", customers);
+
+                // Initialize DataTable with the basic options
+                if ($.fn.DataTable.isDataTable('#customers-table')) {
+                    $('#customers-table').DataTable().destroy();
+                }
+
+                // Check if DataTable is available
+                if (!$.fn.DataTable) {
+                    console.error("DataTables plugin not found");
+
+                    // Fallback to basic table rendering
+                    const tbody = document.querySelector('#customers-table tbody');
+                    tbody.innerHTML = '';
+
+                    if (customers.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center">No customers found</td></tr>';
+                    } else {
+                        customers.forEach(customer => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                            <td><a href="javascript:void(0)" class="customer-details" data-id="${customer.customerId}">${customer.fullName}</a></td>
+                                            <td>${customer.Email}</td>
+                                            <td>${customer.PhoneNumber}</td>
+                                            <td>${customer.formattedDate}</td>
+                                        `;
+                            tbody.appendChild(row);
+                        });
+                    }
+
+                    // Add event listeners for customer details
+                    document.querySelectorAll('.customer-details').forEach(link => {
+                        link.addEventListener('click', function () {
+                            const customerId = this.getAttribute('data-id');
+                            showCustomerDetails(customerId);
+                        });
+                    });
+
+                    return;
+                }
+
+                $('#customers-table').DataTable({
+                    data: customers,
+                    columns: [
+                        {
+                            data: null,
+                            render: function (data) {
+                                return `<a href="javascript:void(0)" class="customer-details" data-id="${data.customerId}">${data.fullName}</a>`;
+                            }
+                        },
+                        { data: 'Email' },
+                        { data: 'PhoneNumber' },
+                        { data: 'formattedDate' }
+                    ],
+                    order: [[3, 'desc']],
+                    responsive: true
+                });
+
+                // Add event listeners for customer details
+                $('#customers-table').off('click', '.customer-details');
+                $('#customers-table').on('click', '.customer-details', function () {
+                    const customerId = $(this).data('id');
+                    showCustomerDetails(customerId);
+                });
+
+            } catch (error) {
+                console.error("Error loading customers table:", error);
+                showError("Failed to load customers table: " + error.message);
+
+                // Display message in the table
+                const tbody = document.querySelector('#customers-table tbody');
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">
+                                Error loading customers. ${error.message}<br>
+                                <button class="btn btn-sm btn-outline-primary mt-2" onclick="loadCustomersTable('${affiliateId}')">Try Again</button>
+                            </td></tr>`;
+            }
+        }
+
+        async function showCustomerDetails(customerId) {
+            try {
+                const modal = new bootstrap.Modal(document.getElementById('customerDetailsModal'));
+
+                // Clear previous data
+                document.getElementById('customer-orders').innerHTML = '';
+                document.getElementById('modal-customer-name').textContent = 'Loading...';
+
+                // Show modal
+                modal.show();
+
+                // Get customer orders
+                const orders = await customerService.getOrdersByCustomerId(customerId);
+
+                // Get customer details
+                const customers = await customerService.getCustomersByAffiliateId(affiliateId);
+                const customer = customers.find(c => c.customerId === customerId);
+
+                if (customer) {
+                    document.getElementById('modal-customer-name').textContent = customer.fullName;
+                    document.getElementById('modal-customer-email').textContent = customer.Email || 'N/A';
+                    document.getElementById('modal-customer-phone').textContent = customer.PhoneNumber || 'N/A';
+                }
+
+                // Populate orders
+                const ordersList = document.getElementById('customer-orders');
+                if (orders.length === 0) {
+                    ordersList.innerHTML = '<li class="list-group-item">No orders found</li>';
+                } else {
+                    orders.forEach(order => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item';
+                        li.innerHTML = `
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6>Order #${order.orderId}</h6>
+                                        <small>Date: ${order.formattedDate}</small>
+                                    </div>
+                                    <span class="badge bg-primary rounded-pill">$${order.TotalAmount || 0}</span>
+                                </div>
+                            `;
+                        ordersList.appendChild(li);
+                    });
+                }
+
+            } catch (error) {
+                console.error("Error showing customer details:", error);
+                showError("Failed to load customer details: " + error.message);
+            }
+        }
+
+        function showError(message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+
+            document.getElementById('alerts-container').appendChild(alertDiv);
+        }
+
+        function showMessage(message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                                            ${message}
+                                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                        `;
+
+            document.getElementById('alerts-container').appendChild(alertDiv);
+
+            // Auto dismiss after 3 seconds
+            setTimeout(() => {
+                alertDiv.classList.remove('show');
+                setTimeout(() => alertDiv.remove(), 150);
+            }, 3000);
+        }
+
+        // Function to manually add customer to affiliate's CustomerId array
+        async function addCustomerToAffiliate(customerId, affiliateId) {
+            try {
+                // Get the affiliate document
+                const affiliateDoc = await firebase.firestore()
+                    .collection('users')
+                    .doc(affiliateId)
+                    .get();
+
+                if (!affiliateDoc.exists) {
+                    throw new Error("Affiliate not found");
+                }
+
+                const affiliateData = affiliateDoc.data();
+                let customerIds = affiliateData.CustomerId || [];
+
+                // If CustomerId is not an array, convert it
+                if (!Array.isArray(customerIds)) {
+                    customerIds = customerIds ? [customerIds] : [];
+                }
+
+                // Check if customer already in array
+                const customerRef = firebase.firestore().collection('users').doc(customerId);
+                const isAlreadyAdded = customerIds.some(ref =>
+                    ref.path === customerRef.path ||
+                    (ref.id && ref.id === customerId)
+                );
+
+                if (!isAlreadyAdded) {
+                    // Add the customer reference
+                    customerIds.push(customerRef);
+
+                    // Update the affiliate
+                    await firebase.firestore()
+                        .collection('users')
+                        .doc(affiliateId)
+                        .update({
+                            CustomerId: customerIds,
+                            UpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+
+                    console.log(`Customer ${customerId} added to affiliate ${affiliateId}`);
+                    return true;
+                } else {
+                    console.log(`Customer ${customerId} already assigned to affiliate ${affiliateId}`);
+                    return false;
+                }
+            } catch (error) {
+                console.error("Error adding customer to affiliate:", error);
+                return false;
+            }
+        }
+    </script>
 }
 
-@* ************** Content ************** *@
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Your Referred Customers</h5>
-                <div class="d-flex align-items-center">
-                    <input type="text" id="searchCustomers" class="form-control" placeholder="Search customers...">
+@section PageStyles {
+    <link rel="stylesheet" href="~/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+}
+
+<div class="container-xxl flex-grow-1 container-p-y">
+    <h4 class="fw-bold py-3 mb-4">
+        <span class="text-muted fw-light">Affiliate /</span> Customers
+    </h4>
+
+    <div id="alerts-container"></div>
+
+    <!-- Stats -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Customers</h5>
+                    <h2 id="customer-count" class="display-6">0</h2>
                 </div>
             </div>
-            <div class="table-responsive">
-                <table class="table datatable-customers">
-                    <thead>
-                        <tr>
-                            <th>Customer</th>
-                            <th>Email</th>
-                            <th>Joined Date</th>
-                            <th>Orders</th>
-                            <th>Amount Spent</th>
-                            <th>Commissions Earned</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- This is placeholder data - would be populated from your data source -->
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar avatar-sm me-3">
-                                        <div class="avatar-initial bg-label-primary rounded-circle">JD</div>
-                                    </div>
-                                    <div>
-                                        <span class="fw-medium">John Doe</span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>john.doe@example.com</td>
-                            <td>May 15, 2023</td>
-                            <td>3</td>
-                            <td>$345.00</td>
-                            <td>$51.75</td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar avatar-sm me-3">
-                                        <div class="avatar-initial bg-label-success rounded-circle">JS</div>
-                                    </div>
-                                    <div>
-                                        <span class="fw-medium">Jane Smith</span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>jane.smith@example.com</td>
-                            <td>June 2, 2023</td>
-                            <td>1</td>
-                            <td>$129.99</td>
-                            <td>$19.50</td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar avatar-sm me-3">
-                                        <div class="avatar-initial bg-label-warning rounded-circle">MB</div>
-                                    </div>
-                                    <div>
-                                        <span class="fw-medium">Michael Brown</span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>m.brown@example.com</td>
-                            <td>July 10, 2023</td>
-                            <td>2</td>
-                            <td>$199.98</td>
-                            <td>$30.00</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="card-footer">
-                <div class="row">
-                    <div class="col-12">
-                        <div class="alert alert-primary mb-0">
-                            <h6 class="alert-heading mb-1">Grow Your Affiliate Income</h6>
-                            <p class="mb-0">Share your affiliate link with more potential customers to increase your earnings. Referrals are tracked automatically when customers use your link.</p>
-                        </div>
-                    </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">New Customers Over Time</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="customers-chart" height="100"></canvas>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Customers Table -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title m-0">All Customers</h5>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCustomerModal">
+                <i class="ti ti-plus me-1"></i> Add Customer
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="customers-table" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Created At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Details Modal -->
+    <div class="modal fade" id="customerDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-customer-name">Customer Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <h6 class="text-muted">Contact Information</h6>
+                        <p><strong>Email:</strong> <span id="modal-customer-email"></span></p>
+                        <p><strong>Phone:</strong> <span id="modal-customer-phone"></span></p>
+                    </div>
+
+                    <h6 class="text-muted">Orders</h6>
+                    <ul class="list-group" id="customer-orders">
+                        <!-- Will be populated by JavaScript -->
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Customer Modal -->
+    <div class="modal fade" id="addCustomerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form id="add-customer-form">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add New Customer</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label for="firstName" class="form-label">First Name <span
+                                        class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="firstName" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="middleName" class="form-label">Middle Name</label>
+                                <input type="text" class="form-control" id="middleName">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="lastName" class="form-label">Last Name <span
+                                        class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="lastName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="email" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="phone" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="phone">
+                            </div>
+                            <div class="col-12">
+                                <label for="password" class="form-label">Password <span
+                                        class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="password" required>
+                                <small class="text-muted">Minimum 6 characters</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add Customer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
-
-
-    <script>
-        window.userContext = {
-        userId: "@ViewBag.UserId",
-        isAdmin: "@ViewBag.IsAdmin" === "1",
-        isAffiliate: "@ViewBag.IsAffiliate" === "1",
-        isCustomer: "@ViewBag.IsCustomer" === "1"
-    };
-        (function () {
-            var table = $('.datatable-customers').DataTable({
-                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
-                lengthMenu: [10, 25, 50, 100],
-                language: {
-                    search: '_INPUT_',
-                    searchPlaceholder: 'Search customers...'
-                }
-            });
-
-            // Apply custom search
-            $('#searchCustomers').on('keyup', function () {
-                table.search(this.value).draw();
-            });
-        });
-    </script>

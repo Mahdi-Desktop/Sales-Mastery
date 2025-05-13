@@ -11,6 +11,7 @@ using AspnetCoreMvcFull.Services.Interfaces;
 using System.Configuration;
 using Org.BouncyCastle.Crypto;
 using Google.Type;
+using Google.Cloud.Firestore;
 
 namespace AspnetCoreMvcFull.Controllers
 {
@@ -77,6 +78,77 @@ namespace AspnetCoreMvcFull.Controllers
 
       return View();
     }
+    /*    [HttpPost]
+        public async Task<IActionResult> LoginBasic(LoginRequest loginRequest)
+        {
+          if (!ModelState.IsValid)
+          {
+            return View(loginRequest);
+          }
+
+          try
+          {
+            // Explicitly specify the types for tuple deconstruction
+            (bool success, User user, string message) = await _authService.LoginAsync(
+                loginRequest.Email,
+                loginRequest.Password,
+                HttpContext.Session);
+
+            if (success && user != null)
+            {
+              // Store user information in session
+              var userJson = JsonSerializer.Serialize(user);
+              HttpContext.Session.SetString("CurrentUser", userJson);
+              HttpContext.Session.SetString("UserId", user.UserId ?? string.Empty);
+
+              // Get Firebase token
+              var firebaseToken = await _firebaseAuthService.Login(loginRequest.Email, loginRequest.Password);
+              if (!string.IsNullOrEmpty(firebaseToken))
+              {
+                HttpContext.Session.SetString("token", firebaseToken);
+              }
+
+              // Store role information
+              HttpContext.Session.SetString("UserRole", user.Role ?? string.Empty);
+
+              // Set role-specific boolean flags for navigation visibility
+              HttpContext.Session.SetString("IsAdmin", "0");
+              HttpContext.Session.SetString("IsAffiliate", "0");
+              HttpContext.Session.SetString("IsCustomer", "0");
+
+              // Set the appropriate role to 1 (true) based on user.Role
+              switch (user.Role)
+              {
+                case "1": // Admin role
+                  HttpContext.Session.SetString("IsAdmin", "1");
+
+                  break;
+
+                case "2": // Affiliate role
+                  HttpContext.Session.SetString("IsAffiliate", "1");
+                  break;
+
+                case "3": // Customer role
+                  HttpContext.Session.SetString("IsCustomer", "1");
+                  break;
+              }
+
+              return RedirectToAction("Index", "Dashboards");
+            }
+            else
+            {
+              ModelState.AddModelError(string.Empty, message);
+              return View(loginRequest);
+            }
+          }
+          catch (Exception ex)
+          {
+            _logger.LogError(ex, "Error during login attempt");
+            ModelState.AddModelError(string.Empty, "An unexpected error occurred during login.");
+            return View(loginRequest);
+          }
+        }*/
+    // Modify the LoginBasic method to add more logging
     [HttpPost]
     public async Task<IActionResult> LoginBasic(LoginRequest loginRequest)
     {
@@ -87,6 +159,8 @@ namespace AspnetCoreMvcFull.Controllers
 
       try
       {
+        _logger.LogInformation($"Login attempt for email: {loginRequest.Email}");
+
         // Explicitly specify the types for tuple deconstruction
         (bool success, User user, string message) = await _authService.LoginAsync(
             loginRequest.Email,
@@ -99,16 +173,23 @@ namespace AspnetCoreMvcFull.Controllers
           var userJson = JsonSerializer.Serialize(user);
           HttpContext.Session.SetString("CurrentUser", userJson);
           HttpContext.Session.SetString("UserId", user.UserId ?? string.Empty);
+          _logger.LogInformation($"User authenticated successfully. User ID: {user.UserId}");
 
           // Get Firebase token
           var firebaseToken = await _firebaseAuthService.Login(loginRequest.Email, loginRequest.Password);
           if (!string.IsNullOrEmpty(firebaseToken))
           {
             HttpContext.Session.SetString("token", firebaseToken);
+            _logger.LogInformation("Firebase token stored in session");
+          }
+          else
+          {
+            _logger.LogWarning("Firebase token was null or empty");
           }
 
           // Store role information
           HttpContext.Session.SetString("UserRole", user.Role ?? string.Empty);
+          _logger.LogInformation($"User role set: {user.Role}");
 
           // Set role-specific boolean flags for navigation visibility
           HttpContext.Session.SetString("IsAdmin", "0");
@@ -120,14 +201,17 @@ namespace AspnetCoreMvcFull.Controllers
           {
             case "1": // Admin role
               HttpContext.Session.SetString("IsAdmin", "1");
+              _logger.LogInformation("User is an Admin");
               break;
 
             case "2": // Affiliate role
               HttpContext.Session.SetString("IsAffiliate", "1");
+              _logger.LogInformation("User is an Affiliate");
               break;
 
             case "3": // Customer role
               HttpContext.Session.SetString("IsCustomer", "1");
+              _logger.LogInformation("User is a Customer");
               break;
           }
 
@@ -135,6 +219,7 @@ namespace AspnetCoreMvcFull.Controllers
         }
         else
         {
+          _logger.LogWarning($"Login failed: {message}");
           ModelState.AddModelError(string.Empty, message);
           return View(loginRequest);
         }
@@ -146,6 +231,105 @@ namespace AspnetCoreMvcFull.Controllers
         return View(loginRequest);
       }
     }
+
+    // Add this method to AuthController
+    [HttpGet]
+    public IActionResult CheckAuthStatus()
+    {
+      var authStatus = new Dictionary<string, string>();
+
+      // Check if we have a token
+      var token = HttpContext.Session.GetString("token");
+      authStatus.Add("HasToken", !string.IsNullOrEmpty(token) ? "Yes" : "No");
+
+      if (!string.IsNullOrEmpty(token))
+      {
+        // Don't show the full token for security reasons
+        authStatus.Add("TokenLength", token.Length.ToString());
+        authStatus.Add("TokenStart", token.Substring(0, 10) + "...");
+      }
+
+      // Check if we have a user ID
+      var userId = HttpContext.Session.GetString("UserId");
+      authStatus.Add("HasUserId", !string.IsNullOrEmpty(userId) ? "Yes" : "No");
+
+      if (!string.IsNullOrEmpty(userId))
+      {
+        authStatus.Add("UserId", userId);
+      }
+
+      // Check user role
+      var userRole = HttpContext.Session.GetString("UserRole");
+      authStatus.Add("UserRole", !string.IsNullOrEmpty(userRole) ? userRole : "None");
+
+      // Check environment variables
+      authStatus.Add("GOOGLE_APPLICATION_CREDENTIALS",
+          !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS"))
+          ? "Set" : "Not Set");
+
+      return Json(authStatus);
+    }
+
+    // Add this method to AuthController
+    [HttpGet]
+    public async Task<IActionResult> TestFirestoreConnection()
+    {
+      try
+      {
+        // Get the FirestoreDb from the service provider
+        var firestoreDb = HttpContext.RequestServices.GetRequiredService<FirestoreDb>();
+
+        // Try a simple operation
+        var collection = firestoreDb.Collection("users");
+        var snapshot = await collection.Limit(1).GetSnapshotAsync();
+
+        return Content($"Firestore connection successful. Found {snapshot.Count} documents.");
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error testing Firestore connection");
+        return Content($"Firestore connection error: {ex.Message}");
+      }
+    }
+
+    // Add this method to AuthController
+    [HttpGet]
+    public IActionResult CheckServiceAccount()
+    {
+      try
+      {
+        var credentialsPath = Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
+
+        if (string.IsNullOrEmpty(credentialsPath))
+        {
+          return Content("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set");
+        }
+
+        if (!System.IO.File.Exists(credentialsPath))
+        {
+          return Content($"Service account file not found at path: {credentialsPath}");
+        }
+
+        // Read the file (don't show the full content for security)
+        var fileContent = System.IO.File.ReadAllText(credentialsPath);
+        var fileSize = fileContent.Length;
+
+        // Check if it contains key fields that should be in a service account JSON
+        bool hasProjectId = fileContent.Contains("project_id");
+        bool hasPrivateKey = fileContent.Contains("private_key");
+        bool hasClientEmail = fileContent.Contains("client_email");
+
+        return Content($"Service account file exists ({fileSize} bytes). " +
+                      $"Contains project_id: {hasProjectId}, " +
+                      $"Contains private_key: {hasPrivateKey}, " +
+                      $"Contains client_email: {hasClientEmail}");
+      }
+      catch (Exception ex)
+      {
+        return Content($"Error checking service account: {ex.Message}");
+      }
+    }
+
 
     /*    [HttpPost]
         public async Task<IActionResult> LoginBasic(LoginRequest loginRequest)
@@ -334,7 +518,7 @@ namespace AspnetCoreMvcFull.Controllers
     {
       try
       {
-        _logger.LogInformation($"Checking phone: {phoneNumber}");
+        _logger.LogInformation($"CHECK PHONE EXISTS - Original input: '{phoneNumber}'");
 
         // Create several possible formats of the phone number to check
         var possibleFormats = new List<string>();
@@ -342,6 +526,19 @@ namespace AspnetCoreMvcFull.Controllers
         // Normalize the input first - remove all non-digit characters except +
         string sanitized = new string(phoneNumber.Where(c => char.IsDigit(c) || c == '+').ToArray());
         possibleFormats.Add(sanitized);
+
+        // Special handling for Lebanese mobile numbers
+        if (IsLebanesePhoneNumber(sanitized))
+        {
+          _logger.LogInformation($"Lebanese mobile number detected: {sanitized}");
+
+          // Create Lebanese standard format for the number
+          string standardFormat = FormatLebanesePhoneNumber(sanitized);
+          if (!possibleFormats.Contains(standardFormat))
+          {
+            possibleFormats.Add(standardFormat);
+          }
+        }
 
         // If doesn't start with +, add variants with +
         if (!sanitized.StartsWith("+"))
@@ -370,15 +567,16 @@ namespace AspnetCoreMvcFull.Controllers
         // Try to find the user
         User? foundUser = null;
 
-        _logger.LogInformation($"Checking these phone formats: {string.Join(", ", possibleFormats)}");
+        _logger.LogInformation($"CHECK PHONE EXISTS - Trying these formats: {string.Join(", ", possibleFormats)}");
 
         // Check all formats
         foreach (var format in possibleFormats)
         {
+          _logger.LogInformation($"CHECK PHONE EXISTS - Checking format: '{format}'");
           var user = await _userService.GetUserByPhoneNumberAsync(format);
           if (user != null)
           {
-            _logger.LogInformation($"Found user with phone format: {format}");
+            _logger.LogInformation($"CHECK PHONE EXISTS - Found user with phone format: '{format}', UserId: {user.UserId}");
             foundUser = user;
             break;
           }
@@ -388,12 +586,14 @@ namespace AspnetCoreMvcFull.Controllers
         if (foundUser == null)
         {
           var allUsers = await _userService.GetAllAsync();
-          _logger.LogInformation($"Checking {allUsers.Count} users for partial phone match");
+          _logger.LogInformation($"CHECK PHONE EXISTS - Trying partial matching with {allUsers.Count} users");
 
           foreach (var user in allUsers)
           {
             if (!string.IsNullOrEmpty(user.PhoneNumber))
             {
+              _logger.LogInformation($"CHECK PHONE EXISTS - Examining user phone: '{user.PhoneNumber}'");
+
               // Try to find if any of our formats end with or are contained in the user's phone
               foreach (var format in possibleFormats)
               {
@@ -406,9 +606,11 @@ namespace AspnetCoreMvcFull.Controllers
                   string userLast8 = userPhone.Substring(userPhone.Length - 8);
                   string formatLast8 = formatPhone.Substring(formatPhone.Length - 8);
 
+                  _logger.LogInformation($"CHECK PHONE EXISTS - Comparing last 8: '{userLast8}' vs '{formatLast8}'");
+
                   if (userLast8 == formatLast8)
                   {
-                    _logger.LogInformation($"Found match in last 8 digits! User phone: {user.PhoneNumber}, Input format: {format}");
+                    _logger.LogInformation($"CHECK PHONE EXISTS - Found match in last 8 digits! User: '{user.PhoneNumber}', Input: '{format}'");
                     foundUser = user;
                     break;
                   }
@@ -417,7 +619,7 @@ namespace AspnetCoreMvcFull.Controllers
                 // Also check if one contains the other (for partial matches)
                 if (userPhone.EndsWith(formatPhone) || formatPhone.EndsWith(userPhone))
                 {
-                  _logger.LogInformation($"Found partial match! User phone: {user.PhoneNumber}, Input format: {format}");
+                  _logger.LogInformation($"CHECK PHONE EXISTS - Found partial match! User: '{user.PhoneNumber}', Input: '{format}'");
                   foundUser = user;
                   break;
                 }
@@ -430,13 +632,13 @@ namespace AspnetCoreMvcFull.Controllers
 
         if (foundUser != null)
         {
-          _logger.LogInformation($"User found with ID: {foundUser.UserId}");
+          _logger.LogInformation($"CHECK PHONE EXISTS - Success! User found with ID: {foundUser.UserId}");
           HttpContext.Session.SetString("ResetPasswordUserId", foundUser.UserId ?? string.Empty);
           HttpContext.Session.SetString("ResetPasswordPhoneNumber", foundUser.PhoneNumber ?? string.Empty);
           return Json(new { exists = true });
         }
 
-        _logger.LogWarning("No user found with any phone format");
+        _logger.LogWarning("CHECK PHONE EXISTS - No user found with any phone format");
 
         // FOR TESTING ONLY - Allow using any phone in development
         // REMOVE THIS IN PRODUCTION
@@ -447,7 +649,7 @@ namespace AspnetCoreMvcFull.Controllers
           if (allUsers.Count > 0)
           {
             var testUser = allUsers[0];
-            _logger.LogWarning($"DEV MODE: Using user ID {testUser.UserId} for testing");
+            _logger.LogWarning($"CHECK PHONE EXISTS - DEV MODE: Using user ID {testUser.UserId} for testing");
             HttpContext.Session.SetString("ResetPasswordUserId", testUser.UserId ?? string.Empty);
 
             // Format phone for Firebase (must start with +)
@@ -463,7 +665,7 @@ namespace AspnetCoreMvcFull.Controllers
             }
 
             HttpContext.Session.SetString("ResetPasswordPhoneNumber", formattedPhone);
-            return Json(new { exists = true });
+            return Json(new { exists = true, message = "DEV MODE: Using test user" });
           }
         }
 
@@ -748,6 +950,94 @@ namespace AspnetCoreMvcFull.Controllers
           HttpContext.Session.GetString("IsAffiliate") == "1",
           HttpContext.Session.GetString("IsCustomer") == "1"
       );
+    }
+
+    // Helper method to check if a phone number is Lebanese
+    private bool IsLebanesePhoneNumber(string phoneNumber)
+    {
+      if (string.IsNullOrEmpty(phoneNumber))
+        return false;
+
+      // Remove any non-digit characters
+      string digitsOnly = new string(phoneNumber.Where(char.IsDigit).ToArray());
+
+      if (string.IsNullOrEmpty(digitsOnly))
+        return false;
+
+      // Check for standard Lebanese mobile prefixes
+      // 03, 70, 71, 76, 78, 79, etc.
+      if (digitsOnly.StartsWith("03") ||
+          digitsOnly.StartsWith("3") ||
+          digitsOnly.StartsWith("70") ||
+          digitsOnly.StartsWith("71") ||
+          digitsOnly.StartsWith("76") ||
+          digitsOnly.StartsWith("78") ||
+          digitsOnly.StartsWith("79"))
+      {
+        return true;
+      }
+
+      // Check for prefixes with country code
+      if (digitsOnly.StartsWith("961") && digitsOnly.Length >= 4)
+      {
+        string prefix = digitsOnly.Substring(3, 1);
+        if (prefix == "3")
+          return true;
+
+        if (digitsOnly.Length >= 5)
+        {
+          string prefix2 = digitsOnly.Substring(3, 2);
+          if (prefix2 == "70" || prefix2 == "71" || prefix2 == "76" || prefix2 == "78" || prefix2 == "79")
+            return true;
+        }
+      }
+
+      return false;
+    }
+
+    // Helper method to format Lebanese phone numbers into a standardized format
+    private string FormatLebanesePhoneNumber(string phoneNumber)
+    {
+      // First remove any non-digit characters except +
+      string cleaned = new string(phoneNumber.Where(c => char.IsDigit(c) || c == '+').ToArray());
+
+      // Extract just the mobile portion (without country code)
+      string mobileNumber;
+
+      if (cleaned.StartsWith("+9613") || cleaned.StartsWith("+9617"))
+      {
+        // Number is already in full international format
+        return cleaned;
+      }
+      else if (cleaned.StartsWith("+961"))
+      {
+        // Number has country code
+        mobileNumber = cleaned.Substring(4);
+      }
+      else if (cleaned.StartsWith("961"))
+      {
+        // Has country code without +
+        mobileNumber = cleaned.Substring(3);
+      }
+      else if (cleaned.StartsWith("0"))
+      {
+        // Starts with local 0
+        mobileNumber = cleaned.Substring(1);
+      }
+      else
+      {
+        // Assume it's already just the mobile number
+        mobileNumber = cleaned;
+      }
+
+      // If it starts with 3 or 7, it's likely the core mobile number
+      if (mobileNumber.StartsWith("3") || mobileNumber.StartsWith("7"))
+      {
+        return "+961" + mobileNumber;
+      }
+
+      // If we couldn't properly format it, just return with +961 prefix
+      return "+961" + mobileNumber;
     }
   }
 }

@@ -1,106 +1,481 @@
 @model AspnetCoreMvcFull.DTO.User
 @{
-    ViewData["Title"] = "Account settings - Security";
+  ViewData["Title"] = "User Profile Settings";
 }
 
 @section VendorStyles {
-    <link rel="stylesheet" href="~/vendor/libs/select2/select2.css" />
+  <link rel="stylesheet" href="~/vendor/libs/select2/select2.css" />
+  <link rel="stylesheet" href="~/vendor/libs/&#64;form-validation/form-validation.css" />
+  <link rel="stylesheet" href="~/vendor/libs/sweetalert2/sweetalert2.css" />
+  <style>
+    .loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .tab-content {
+      padding-top: 1.5rem;
+    }
+
+    #avatar-container {
+      position: relative;
+      width: 100px;
+      height: 100px;
+    }
+
+    #uploadedAvatar {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+    }
+
+    #loading-indicator {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 2rem;
+    }
+  </style>
 }
 
 @section VendorScripts {
-    <script src="~/vendor/libs/select2/select2.js"></script>
+  <script src="~/vendor/libs/select2/select2.js"></script>
+  <script src="~/vendor/libs/&#64;form-validation/popular.js"></script>
+  <script src="~/vendor/libs/&#64;form-validation/bootstrap5.js"></script>
+  <script src="~/vendor/libs/sweetalert2/sweetalert2.js"></script>
 }
 
 @section PageScripts {
-    <script src="~/js/pages-account-settings-security.js"></script>
+  <script>
+    // Make user ID available to client scripts
+    var viewBagUserId = "@ViewBag.UserId";
+
+    // Firebase configuration from ViewBag
+    window.firebaseConfig = {
+      apiKey: "@ViewBag.FirebaseApiKey",
+      authDomain: "@ViewBag.FirebaseAuthDomain",
+      projectId: "@ViewBag.FirebaseProjectId",
+      storageBucket: "@ViewBag.FirebaseStorageBucket",
+      messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+      appId: "@ViewBag.FirebaseAppId"
+    };
+  </script>
+  <script src="~/js/firebase-init.js"></script>
+  <script src="~/js/services/users-service.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Initialize variables
+      const alertsContainer = document.getElementById('alerts-container');
+      const loadingIndicator = document.getElementById('loading-indicator');
+
+      // Get user ID from all possible sources
+      let userId = viewBagUserId ||
+        (window.userContext ? window.userContext.userId : null) ||
+        sessionStorage.getItem('UserId') ||
+        sessionStorage.getItem('userId');
+
+      if (!userId) {
+        showError('User is not logged in. Please log in to access this page.');
+        disableAllForms();
+        return;
+      }
+
+      // Show loading state
+      toggleLoading(true);
+
+      // Initialize tabs without waiting for data
+      initializeTabHandling();
+
+      // Start loading user data asynchronously
+      loadUserData();
+
+      // Function to load user data
+      async function loadUserData() {
+        try {
+          // Wait for Firebase to initialize, using Promise-based approach
+          if (!window.firebaseInitialized) {
+            await initializeFirebase();
+          }
+
+          // Load user data from Firestore
+          const userData = await usersService.getUserById(userId);
+          if (!userData) {
+            showError('User not found');
+            return;
+          }
+
+          // Populate form with user data
+          populateForm(userData);
+
+          // Initialize form submit handlers
+          initializeAccountForm();
+          initializeSecurityForm();
+        } catch (error) {
+          console.error('Error loading user data:', error);
+          showError('Error loading data: ' + error.message);
+        } finally {
+          toggleLoading(false);
+        }
+      }
+
+      // Function to disable all forms if user is not logged in
+      function disableAllForms() {
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+          const inputs = form.querySelectorAll('input, button, select');
+          inputs.forEach(input => input.disabled = true);
+        });
+
+        // Add message at top of page
+        const formContainers = document.querySelectorAll('.card-body');
+        formContainers.forEach(container => {
+          container.classList.add('opacity-50');
+        });
+
+        // Hide loading indicator
+        if (loadingIndicator) {
+          loadingIndicator.style.display = 'none';
+        }
+      }
+
+      // Function to toggle loading state
+      function toggleLoading(isLoading) {
+        if (loadingIndicator) {
+          loadingIndicator.style.display = isLoading ? 'flex' : 'none';
+        }
+
+        // Toggle form fields disabled state
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+          const inputs = form.querySelectorAll('input, button, select');
+          inputs.forEach(input => {
+            input.disabled = isLoading;
+          });
+        });
+      }
+
+      // Function to initialize tab handling
+      function initializeTabHandling() {
+        const tabLinks = document.querySelectorAll('.nav-link');
+        const tabContents = document.querySelectorAll('.tab-pane');
+
+        tabLinks.forEach(link => {
+          link.addEventListener('click', function (e) {
+            e.preventDefault();
+
+            // Remove active class from all tabs and contents
+            tabLinks.forEach(link => link.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active', 'show'));
+
+            // Add active class to clicked tab
+            this.classList.add('active');
+
+            // Show corresponding content
+            const targetId = this.getAttribute('href').substring(1);
+            document.getElementById(targetId).classList.add('active', 'show');
+          });
+        });
+      }
+
+      // Function to populate form fields
+      function populateForm(userData) {
+        // Populate account form
+        setFieldValue('FirstName', userData.FirstName);
+        setFieldValue('MiddleName', userData.MiddleName);
+        setFieldValue('LastName', userData.LastName);
+        setFieldValue('Email', userData.Email);
+        setFieldValue('PhoneNumber', userData.PhoneNumber);
+      }
+
+      // Helper function to set field value
+      function setFieldValue(fieldId, value) {
+        const field = document.getElementById(fieldId);
+        if (field && value) {
+          field.value = value;
+        }
+      }
+
+      // Initialize account form
+      function initializeAccountForm() {
+        const accountForm = document.getElementById('formAccountSettings');
+
+        accountForm.addEventListener('submit', async function (e) {
+          e.preventDefault();
+
+          try {
+            // Show loading state
+            const submitBtn = accountForm.querySelector('button[type="submit"]');
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+            submitBtn.disabled = true;
+
+            // Get form data
+            const userData = {
+              FirstName: document.getElementById('FirstName').value,
+              MiddleName: document.getElementById('MiddleName').value,
+              LastName: document.getElementById('LastName').value,
+              PhoneNumber: document.getElementById('PhoneNumber').value
+            };
+
+            // Update user
+            const success = await usersService.updateUser(userId, userData);
+
+            if (success) {
+              showSuccess('Profile updated successfully');
+            } else {
+              showError('Failed to update profile');
+            }
+          } catch (error) {
+            console.error('Error updating profile:', error);
+            showError('Error updating profile: ' + error.message);
+          } finally {
+            // Reset button
+            const submitBtn = accountForm.querySelector('button[type="submit"]');
+            submitBtn.innerHTML = 'Save changes';
+            submitBtn.disabled = false;
+          }
+        });
+      }
+
+      // Initialize security form
+      function initializeSecurityForm() {
+        const securityForm = document.getElementById('formChangePassword');
+
+        securityForm.addEventListener('submit', async function (e) {
+          e.preventDefault();
+
+          // Get form values
+          const currentPassword = document.getElementById('currentPassword').value;
+          const newPassword = document.getElementById('newPassword').value;
+          const confirmPassword = document.getElementById('confirmPassword').value;
+
+          // Validate form
+          if (!currentPassword) {
+            showError('Current password is required');
+            return;
+          }
+
+          if (!newPassword) {
+            showError('New password is required');
+            return;
+          }
+
+          if (newPassword.length < 8) {
+            showError('New password must be at least 8 characters long');
+            return;
+          }
+
+          if (newPassword !== confirmPassword) {
+            showError('New password and confirmation do not match');
+            return;
+          }
+
+          // Change password
+          await changePassword(currentPassword, newPassword);
+        });
+      }
+
+      // Change password function
+      async function changePassword(currentPassword, newPassword) {
+        try {
+          // Show loading
+          const submitBtn = document.querySelector('#formChangePassword button[type="submit"]');
+          submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Changing Password...';
+          submitBtn.disabled = true;
+
+          // Call service
+          const result = await usersService.changePassword(userId, currentPassword, newPassword);
+
+          if (result.success) {
+            showSuccess(result.message);
+            document.getElementById('formChangePassword').reset();
+          } else {
+            showError(result.message);
+          }
+        } catch (error) {
+          console.error('Error changing password:', error);
+          showError('An error occurred while changing your password');
+        } finally {
+          // Reset button
+          const submitBtn = document.querySelector('#formChangePassword button[type="submit"]');
+          submitBtn.innerHTML = 'Change Password';
+          submitBtn.disabled = false;
+        }
+      }
+
+      // Helper functions for alerts
+      function showSuccess(message) {
+        showMessage(message, 'success');
+      }
+
+      function showError(message) {
+        showMessage(message, 'danger');
+      }
+
+      function showMessage(message, type = 'success') {
+        const alertsContainer = document.getElementById('alerts-container');
+        if (!alertsContainer) return;
+
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `
+                  ${message}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+
+        alertsContainer.appendChild(alert);
+      }
+    });
+  </script>
 }
 
 @* ************** Content ************** *@
 <div class="row">
-    <div class="col-md-12">
-        @if (TempData["SuccessMessage"] != null)
-        {
-            <div class="alert alert-success" role="alert">
-                @TempData["SuccessMessage"]
-            </div>
-        }
-
-        @if (TempData["ErrorMessage"] != null)
-        {
-            <div class="alert alert-danger" role="alert">
-                @TempData["ErrorMessage"]
-            </div>
-        }
-
-        <div class="nav-align-top">
-            <ul class="nav nav-pills flex-column flex-md-row mb-6 gap-2 gap-lg-0">
-                <li class="nav-item"><a class="nav-link" href="@Url.Action("Settings", "Account")"><i class="ti-sm ti ti-users me-1_5"></i> Account</a></li>
-                <li class="nav-item"><a class="nav-link active" href="javascript:void(0);"><i class="ti-sm ti ti-lock me-1_5"></i> Security</a></li>
-                <li class="nav-item"><a class="nav-link" href="AccountSettingsBilling"><i class="ti-sm ti ti-bookmark me-1_5"></i> Billing & Plans</a></li>
-                <li class="nav-item"><a class="nav-link" href="AccountSettingsNotifications"><i class="ti-sm ti ti-bell me-1_5"></i> Notifications</a></li>
-                <li class="nav-item"><a class="nav-link" href="AccountSettingsConnections"><i class="ti-sm ti ti-link me-1_5"></i> Connections</a></li>
-            </ul>
+  <div class="col-md-12">
+    <div id="alerts-container">
+      @if (TempData["SuccessMessage"] != null)
+      {
+        <div class="alert alert-success" role="alert">
+          @TempData["SuccessMessage"]
         </div>
-        <div class="row">
-            <!-- Change Password -->
-            <div class="col-md-6 col-12 mb-md-0 mb-6">
-                <div class="card">
-                    <h5 class="card-header">Change Password</h5>
-                    <div class="card-body">
-                        <form id="formChangePassword" method="POST" action="@Url.Action("UpdateSecurity", "Account")">
-                            @Html.AntiForgeryToken()
-                            <div class="alert alert-warning" role="alert">
-                                <h5 class="alert-heading mb-2">Ensure that these requirements are met</h5>
-                                <span>Minimum 8 characters long, lowercase & uppercase, and a number</span>
-                            </div>
-
-                            <div class="row">
-                                <div class="mb-4 form-password-toggle col-12">
-                                    <label class="form-label" for="currentPassword">Current Password</label>
-                                    <div class="input-group input-group-merge">
-                                        <input class="form-control" type="password" name="currentPassword" id="currentPassword" placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;" />
-                                        <span class="input-group-text cursor-pointer"><i class="ti ti-eye-off"></i></span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="mb-4 form-password-toggle col-12">
-                                    <label class="form-label" for="newPassword">New Password</label>
-                                    <div class="input-group input-group-merge">
-                                        <input class="form-control" type="password" id="newPassword" name="newPassword" placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;" />
-                                        <span class="input-group-text cursor-pointer"><i class="ti ti-eye-off"></i></span>
-                                    </div>
-                                </div>
-
-                                <div class="mb-4 form-password-toggle col-12">
-                                    <label class="form-label" for="confirmPassword">Confirm New Password</label>
-                                    <div class="input-group input-group-merge">
-                                        <input class="form-control" type="password" name="confirmPassword" id="confirmPassword" placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;" />
-                                        <span class="input-group-text cursor-pointer"><i class="ti ti-eye-off"></i></span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <button type="submit" class="btn btn-primary me-2">Change Password</button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            <!-- Two-factor Authentication -->
-            <div class="col-md-6 col-12">
-                <div class="card">
-                    <h5 class="card-header">Two-factor Authentication</h5>
-                    <div class="card-body">
-                        <h6 class="fw-semibold mb-2">Two factor authentication is not enabled yet.</h6>
-                        <p class="mb-4">
-                            Two-factor authentication adds an additional layer of security to your account by requiring more than just a password to sign in.
-                            <a href="javascript:void(0);">Learn more.</a>
-                        </p>
-                        <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#enableOTP">Enable two-factor authentication</button>
-                    </div>
-                </div>
-            </div>
+      }
+      @if (TempData["ErrorMessage"] != null)
+      {
+        <div class="alert alert-danger" role="alert">
+          @TempData["ErrorMessage"]
         </div>
+      }
     </div>
+
+    <div class="card mb-4">
+      <h5 class="card-header pb-0">Account Settings</h5>
+
+      <!-- Loading Indicator -->
+      <div id="loading-indicator">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading user data...</span>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <!-- Nav tabs -->
+        <ul class="nav nav-tabs nav-fill" role="tablist">
+          <li class="nav-item">
+            <a class="nav-link active" id="account-tab" data-bs-toggle="tab" href="#account-tab-content" role="tab"
+              aria-controls="account-tab-content" aria-selected="true">
+              <i class="ti ti-user me-1"></i> Account
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="security-tab" data-bs-toggle="tab" href="#security-tab-content" role="tab"
+              aria-controls="security-tab-content" aria-selected="false">
+              <i class="ti ti-lock me-1"></i> Security
+            </a>
+          </li>
+        </ul>
+
+        <!-- Tab content -->
+        <div class="tab-content">
+          <!-- Account Tab -->
+          <div class="tab-pane fade show active" id="account-tab-content" role="tabpanel" aria-labelledby="account-tab">
+            <form id="formAccountSettings">
+              <div class="row mt-2 gy-4">
+                <div class="col-md-6">
+                  <div class="form-floating form-floating-outline">
+                    <input class="form-control" type="text" id="FirstName" name="FirstName" placeholder="First Name" />
+                    <label for="FirstName">First Name</label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-floating form-floating-outline">
+                    <input class="form-control" type="text" id="MiddleName" name="MiddleName"
+                      placeholder="Middle Name" />
+                    <label for="MiddleName">Middle Name</label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-floating form-floating-outline">
+                    <input class="form-control" type="text" id="LastName" name="LastName" placeholder="Last Name" />
+                    <label for="LastName">Last Name</label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-floating form-floating-outline">
+                    <input class="form-control" type="email" id="Email" name="Email" placeholder="john.doe@example.com"
+                      readonly />
+                    <label for="Email">Email</label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-floating form-floating-outline">
+                    <input type="text" class="form-control" id="PhoneNumber" name="PhoneNumber"
+                      placeholder="202 555 0111" />
+                    <label for="PhoneNumber">Phone Number</label>
+                  </div>
+                </div>
+                <div class="col-12 mt-4">
+                  <button type="submit" class="btn btn-primary me-2">Save changes</button>
+                  <button type="reset" class="btn btn-label-secondary">Cancel</button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <!-- Security Tab -->
+          <div class="tab-pane fade" id="security-tab-content" role="tabpanel" aria-labelledby="security-tab">
+            <div class="mb-4">
+              <h6 class="fw-semibold">Change Password</h6>
+              <p>Ensure your account is using a long, random password to stay secure.</p>
+            </div>
+            <form id="formChangePassword">
+              <div class="row">
+                <div class="mb-3 col-md-6 form-password-toggle">
+                  <div class="input-group input-group-merge">
+                    <div class="form-floating form-floating-outline">
+                      <input class="form-control" type="password" id="currentPassword" name="currentPassword"
+                        placeholder="············" />
+                      <label for="currentPassword">Current Password</label>
+                    </div>
+                    <span class="input-group-text cursor-pointer"><i class="ti ti-eye-off"></i></span>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="mb-3 col-md-6 form-password-toggle">
+                  <div class="input-group input-group-merge">
+                    <div class="form-floating form-floating-outline">
+                      <input class="form-control" type="password" id="newPassword" name="newPassword"
+                        placeholder="············" />
+                      <label for="newPassword">New Password</label>
+                    </div>
+                    <span class="input-group-text cursor-pointer"><i class="ti ti-eye-off"></i></span>
+                  </div>
+                </div>
+                <div class="mb-3 col-md-6 form-password-toggle">
+                  <div class="input-group input-group-merge">
+                    <div class="form-floating form-floating-outline">
+                      <input class="form-control" type="password" id="confirmPassword" name="confirmPassword"
+                        placeholder="············" />
+                      <label for="confirmPassword">Confirm New Password</label>
+                    </div>
+                    <span class="input-group-text cursor-pointer"><i class="ti ti-eye-off"></i></span>
+                  </div>
+                </div>
+                <div class="col-12 mb-4">
+                  <h6 class="mt-2">Password Requirements:</h6>
+                  <ul class="ps-3 mb-0">
+                    <li class="mb-1">Minimum 8 characters long</li>
+                    <li class="mb-1">At least one lowercase character</li>
+                    <li>At least one number or symbol</li>
+                  </ul>
+                </div>
+                <div>
+                  <button type="submit" class="btn btn-primary me-2">Change Password</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>

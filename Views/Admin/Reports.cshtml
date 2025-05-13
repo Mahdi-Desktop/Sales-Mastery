@@ -1,0 +1,1396 @@
+@{
+  ViewData["Title"] = "Admin Reports";
+  Layout = "_ContentNavbarLayout";
+}
+
+@section VendorStyles {
+  <link rel="stylesheet" href="~/vendor/libs/apex-charts/apex-charts.css" />
+  <link rel="stylesheet" href="~/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
+  <link rel="stylesheet" href="~/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+  <link rel="stylesheet" href="~/vendor/libs/daterangepicker/daterangepicker.css" />
+}
+
+<div class="container-xxl flex-grow-1 container-p-y">
+@*   <h4 class="fw-bold py-3 mb-4">
+    <span class="text-muted fw-light">Admin /</span> Reports
+  </h4> *@
+
+  <!-- Date Range Selector -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-md-3 mb-3 mb-md-0">
+              <label for="reportrange" class="form-label">Date Range</label>
+              <div id="reportrange" class="form-control d-flex align-items-center cursor-pointer">
+                <i class="ti ti-calendar me-2"></i>
+                <span>Last 30 days</span>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+              <label for="affiliateFilter" class="form-label">Filter by Affiliate</label>
+              <select id="affiliateFilter" class="form-select">
+                <option value="">All Affiliates</option>
+                <!-- Options will be added by JavaScript -->
+              </select>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+              <label for="productFilter" class="form-label">Filter by Product</label>
+              <select id="productFilter" class="form-select">
+                <option value="">All Products</option>
+                <!-- Options will be added by JavaScript -->
+              </select>
+            </div>
+            <div class="col-md-3 text-md-end mt-md-4">
+              <button type="button" class="btn btn-primary" id="exportReportBtn">
+                <i class="ti ti-file-export me-1"></i> Export Report
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sales Summary Cards -->
+  <div class="row">
+    <div class="col-lg-3 col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h5 class="card-title mb-0">Total Sales</h5>
+              <small class="text-muted">During selected period</small>
+            </div>
+            <div class="avatar">
+              <div class="avatar-initial rounded bg-label-primary">
+                <i class="ti ti-currency-dollar ti-sm"></i>
+              </div>
+            </div>
+          </div>
+          <h2 class="mb-0 mt-2" id="totalSales">$0</h2>
+          <span class="badge bg-label-success" id="salesGrowth">0%</span>
+          <small class="text-muted"> vs previous period</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h5 class="card-title mb-0">Orders</h5>
+              <small class="text-muted">Total orders</small>
+            </div>
+            <div class="avatar">
+              <div class="avatar-initial rounded bg-label-info">
+                <i class="ti ti-shopping-cart ti-sm"></i>
+              </div>
+            </div>
+          </div>
+          <h2 class="mb-0 mt-2" id="totalOrders">0</h2>
+          <span class="badge bg-label-info" id="ordersGrowth">0%</span>
+          <small class="text-muted"> vs previous period</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h5 class="card-title mb-0">Commissions</h5>
+              <small class="text-muted">Total commissions paid</small>
+            </div>
+            <div class="avatar">
+              <div class="avatar-initial rounded bg-label-warning">
+                <i class="ti ti-cash ti-sm"></i>
+              </div>
+            </div>
+          </div>
+          <h2 class="mb-0 mt-2" id="totalCommissions">$0</h2>
+          <span class="badge bg-label-warning" id="commissionsGrowth">0%</span>
+          <small class="text-muted"> vs previous period</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h5 class="card-title mb-0">New Customers</h5>
+              <small class="text-muted">Customer acquisition</small>
+            </div>
+            <div class="avatar">
+              <div class="avatar-initial rounded bg-label-success">
+                <i class="ti ti-users ti-sm"></i>
+              </div>
+            </div>
+          </div>
+          <h2 class="mb-0 mt-2" id="newCustomers">0</h2>
+          <span class="badge bg-label-success" id="customersGrowth">0%</span>
+          <small class="text-muted"> vs previous period</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sales & Commission Chart -->
+  <div class="row">
+    <div class="col-12 mb-4">
+      <div class="card">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <h5 class="card-title mb-0">Sales & Commission Trends</h5>
+          <div class="btn-group" role="group">
+            <input type="radio" class="btn-check" name="chartViewOption" id="dailyView" checked />
+            <label class="btn btn-outline-primary" for="dailyView">Daily</label>
+            <input type="radio" class="btn-check" name="chartViewOption" id="weeklyView" />
+            <label class="btn btn-outline-primary" for="weeklyView">Weekly</label>
+            <input type="radio" class="btn-check" name="chartViewOption" id="monthlyView" />
+            <label class="btn btn-outline-primary" for="monthlyView">Monthly</label>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="salesCommissionChart" style="height: 350px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Products & Top Affiliates -->
+  <div class="row">
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between">
+          <h5 class="card-title mb-0">Top Products</h5>
+          <button type="button" class="btn btn-sm btn-outline-primary" id="viewAllProductsBtn">View All</button>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover" id="topProductsTable">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Orders</th>
+                  <th>Revenue</th>
+                  <th>Commission</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="4" class="text-center">Loading products data...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between">
+          <h5 class="card-title mb-0">Top Affiliates</h5>
+          <button type="button" class="btn btn-sm btn-outline-primary" id="viewAllAffiliatesBtn">View All</button>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover" id="topAffiliatesTable">
+              <thead>
+                <tr>
+                  <th>Affiliate</th>
+                  <th>Customers</th>
+                  <th>Orders</th>
+                  <th>Commission</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="4" class="text-center">Loading affiliates data...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Commission Distribution & Customer Acquisition Chart -->
+  <div class="row">
+    <div class="col-md-5 mb-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Commission Distribution</h5>
+        </div>
+        <div class="card-body">
+          <div id="commissionDistributionChart" style="height: 300px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-7 mb-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Customer Acquisition</h5>
+        </div>
+        <div class="card-body">
+          <div id="customerAcquisitionChart" style="height: 300px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase Scripts -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+<!-- SweetAlert -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+@section VendorScripts {
+  <script src="~/vendor/libs/apex-charts/apexcharts.js"></script>
+  <script src="~/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+  <script src="~/vendor/libs/moment/moment.js"></script>
+  <script src="~/vendor/libs/daterangepicker/daterangepicker.js"></script>
+}
+
+@section PageScripts {
+  <!-- Initialize Firebase -->
+  <script>
+    // Pass Firebase configuration from server to client
+    window.firebaseConfig = {
+      apiKey: "@ViewBag.FirebaseApiKey",
+      authDomain: "@ViewBag.FirebaseProjectId" + ".firebaseapp.com",
+      projectId: "@ViewBag.FirebaseProjectId",
+      storageBucket: "@ViewBag.FirebaseStorageBucket",
+      messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+      appId: "@ViewBag.FirebaseAppId"
+    };
+
+    // Set user context for access control
+    window.userContext = {
+      userId: "@ViewBag.UserId",
+      isAdmin: @(ViewBag.IsAdmin == "1" ? "true" : "false"),
+      isAffiliate: @(ViewBag.IsAffiliate == "1" ? "true" : "false"),
+      isCustomer: @(ViewBag.IsCustomer == "1" ? "true" : "false")
+                                    };
+  </script>
+
+  <script>
+    let db;
+    let startDate;
+    let endDate;
+    let salesCommissionChart;
+    let commissionDistributionChart;
+    let customerAcquisitionChart;
+    let products = {};
+    let affiliates = {};
+
+    document.addEventListener('DOMContentLoaded', function () {
+      // Initialize Firebase
+      try {
+        if (typeof firebase === 'undefined') {
+          console.error('Firebase SDK not loaded');
+          if (typeof Swal !== 'undefined') {
+            Swal.fire({
+              title: 'Error',
+              text: 'Firebase SDK failed to load. Please check your internet connection and try again.',
+              icon: 'error'
+            });
+          } else {
+            alert('Firebase SDK failed to load. Please check your internet connection and try again.');
+          }
+
+          // Try loading Firebase from our init script
+          const script = document.createElement('script');
+          script.src = '/js/firebase-init.js';
+          script.onload = function () {
+            console.log('Loaded firebase-init.js, trying to initialize again');
+            initializeFirebaseAndLoad();
+          };
+          document.head.appendChild(script);
+          return;
+        }
+
+        initializeFirebaseAndLoad();
+      } catch (error) {
+        console.error('Error initializing app:', error);
+        if (typeof Swal !== 'undefined') {
+          Swal.fire({
+            title: 'Error',
+            text: 'Failed to initialize application: ' + error.message,
+            icon: 'error'
+          });
+        } else {
+          alert('Failed to initialize application: ' + error.message);
+        }
+      }
+    });
+
+    function initializeFirebaseAndLoad() {
+      try {
+        // Initialize Firebase if not already initialized
+        if (!firebase.apps.length) {
+          firebase.initializeApp(window.firebaseConfig);
+        }
+        db = firebase.firestore();
+
+        // Initialize date range picker
+        initializeDateRangePicker();
+
+        // Set default date range (last 30 days)
+        const today = new Date();
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - 30);
+        endDate = today;
+
+        // Initialize charts
+        initializeCharts();
+
+        // Load data
+        loadFilters();
+        loadReportData(startDate, endDate);
+
+        // Set up event listeners
+        setupEventListeners();
+      } catch (error) {
+        console.error('Error initializing Firebase:', error);
+        if (typeof Swal !== 'undefined') {
+          Swal.fire({
+            title: 'Error',
+            text: 'Failed to connect to database: ' + error.message,
+            icon: 'error'
+          });
+        } else {
+          alert('Failed to connect to database: ' + error.message);
+        }
+      }
+    }
+
+    function initializeDateRangePicker() {
+      if (typeof moment === 'undefined' || typeof $.fn.daterangepicker === 'undefined') {
+        console.warn('Date range picker libraries not loaded');
+        return;
+      }
+
+      const reportrange = document.getElementById('reportrange');
+      if (!reportrange) return;
+
+      const start = moment().subtract(29, 'days');
+      const end = moment();
+
+      function cb(start, end) {
+        reportrange.querySelector('span').innerHTML = start.format('MMM D, YYYY') + ' - ' + end.format('MMM D, YYYY');
+        startDate = start.toDate();
+        endDate = end.toDate();
+        loadReportData(startDate, endDate);
+      }
+
+      try {
+        $(reportrange).daterangepicker(
+          {
+            startDate: start,
+            endDate: end,
+            ranges: {
+              'Today': [moment(), moment()],
+              'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+              'Last 7 Days': [moment().subtract(6, 'days'), moment()],
+              'Last 30 Days': [moment().subtract(29, 'days'), moment()],
+              'This Month': [moment().startOf('month'), moment().endOf('month')],
+              'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+            }
+          },
+          cb
+        );
+
+        cb(start, end);
+      } catch (error) {
+        console.error('Error initializing daterangepicker:', error);
+      }
+    }
+
+    function initializeCharts() {
+      // Sales & Commission Chart
+      const salesCommissionChartEl = document.getElementById('salesCommissionChart');
+      if (salesCommissionChartEl) {
+        salesCommissionChart = new ApexCharts(salesCommissionChartEl, {
+          chart: {
+            type: 'line',
+            height: 350,
+            toolbar: {
+              show: false
+            }
+          },
+          series: [{
+            name: 'Sales',
+            data: []
+          }, {
+            name: 'Commissions',
+            data: []
+          }],
+          stroke: {
+            curve: 'smooth',
+            width: [3, 3]
+          },
+          legend: {
+            position: 'top'
+          },
+          grid: {
+            borderColor: '#f1f1f1',
+          },
+          xaxis: {
+            categories: [],
+            axisTicks: {
+              show: false
+            }
+          },
+          yaxis: [
+            {
+              title: {
+                text: 'Sales ($)'
+              }
+            },
+            {
+              opposite: true,
+              title: {
+                text: 'Commissions ($)'
+              }
+            }
+          ],
+          colors: [config.colors.primary, config.colors.warning]
+        });
+        salesCommissionChart.render();
+      }
+
+      // Commission Distribution Chart
+      const commissionDistChartEl = document.getElementById('commissionDistributionChart');
+      if (commissionDistChartEl) {
+        commissionDistributionChart = new ApexCharts(commissionDistChartEl, {
+          chart: {
+            type: 'pie',
+            height: 300,
+            toolbar: {
+              show: false
+            }
+          },
+          series: [],
+          labels: [],
+          legend: {
+            position: 'bottom'
+          },
+          colors: [config.colors.primary, config.colors.info, config.colors.success, config.colors.warning, config.colors.danger]
+        });
+        commissionDistributionChart.render();
+      }
+
+      // Customer Acquisition Chart
+      const customerAcqChartEl = document.getElementById('customerAcquisitionChart');
+      if (customerAcqChartEl) {
+        customerAcquisitionChart = new ApexCharts(customerAcqChartEl, {
+          chart: {
+            type: 'bar',
+            height: 300,
+            stacked: true,
+            toolbar: {
+              show: false
+            }
+          },
+          series: [{
+            name: 'Direct',
+            data: []
+          }, {
+            name: 'Affiliate Referral',
+            data: []
+          }],
+          xaxis: {
+            categories: []
+          },
+          fill: {
+            opacity: 1
+          },
+          legend: {
+            position: 'top'
+          },
+          colors: [config.colors.primary, config.colors.success]
+        });
+        customerAcquisitionChart.render();
+      }
+    }
+
+    function setupEventListeners() {
+      // Chart view options
+      document.getElementById('dailyView').addEventListener('change', function () {
+        if (this.checked) updateChartView('daily');
+      });
+      document.getElementById('weeklyView').addEventListener('change', function () {
+        if (this.checked) updateChartView('weekly');
+      });
+      document.getElementById('monthlyView').addEventListener('change', function () {
+        if (this.checked) updateChartView('monthly');
+      });
+
+      // Affiliate filter
+      document.getElementById('affiliateFilter').addEventListener('change', function () {
+        filterReportData();
+      });
+
+      // Product filter
+      document.getElementById('productFilter').addEventListener('change', function () {
+        filterReportData();
+      });
+
+      // View all products
+      document.getElementById('viewAllProductsBtn').addEventListener('click', function () {
+        window.location.href = '/Admin/Products';
+      });
+
+      // View all affiliates
+      document.getElementById('viewAllAffiliatesBtn').addEventListener('click', function () {
+        window.location.href = '/Admin/Affiliates';
+      });
+
+      // Export report
+      document.getElementById('exportReportBtn').addEventListener('click', function () {
+        exportReport();
+      });
+    }
+
+    async function loadFilters() {
+      try {
+        // Load products
+        const productsSnapshot = await db.collection('products').get();
+        const productFilter = document.getElementById('productFilter');
+
+        productsSnapshot.forEach(doc => {
+          const product = doc.data();
+          products[doc.id] = {
+            name: product.Name || 'Unnamed Product',
+            sku: product.SKU || ''
+          };
+
+          const option = document.createElement('option');
+          option.value = doc.id;
+          option.textContent = products[doc.id].name;
+          productFilter.appendChild(option);
+        });
+
+        // Load affiliates
+        const affiliatesSnapshot = await db.collection('users')
+          .where('Role', '==', '2')  // Role 2 for affiliates
+          .get();
+
+        const affiliateFilter = document.getElementById('affiliateFilter');
+
+        affiliatesSnapshot.forEach(doc => {
+          const affiliate = doc.data();
+          affiliates[doc.id] = {
+            name: `${affiliate.FirstName || ''} ${affiliate.LastName || ''}`.trim() || affiliate.Email || 'Unknown'
+          };
+
+          const option = document.createElement('option');
+          option.value = doc.id;
+          option.textContent = affiliates[doc.id].name;
+          affiliateFilter.appendChild(option);
+        });
+      } catch (error) {
+        console.error('Error loading filters:', error);
+      }
+    }
+
+    async function loadReportData(start, end) {
+      try {
+        // Show loading indicators
+        document.getElementById('totalSales').textContent = 'Loading...';
+        document.getElementById('totalOrders').textContent = 'Loading...';
+        document.getElementById('totalCommissions').textContent = 'Loading...';
+        document.getElementById('newCustomers').textContent = 'Loading...';
+
+        // Convert dates to timestamps for Firestore query
+        const startTimestamp = firebase.firestore.Timestamp.fromDate(start);
+        const endTimestamp = firebase.firestore.Timestamp.fromDate(end);
+
+        // Calculate previous period start/end for comparison
+        const periodDays = Math.round((end - start) / (24 * 60 * 60 * 1000));
+        const prevPeriodStart = new Date(start);
+        prevPeriodStart.setDate(prevPeriodStart.getDate() - periodDays);
+        const prevPeriodEnd = new Date(start);
+        prevPeriodEnd.setDate(prevPeriodEnd.getDate() - 1);
+
+        const prevStartTimestamp = firebase.firestore.Timestamp.fromDate(prevPeriodStart);
+        const prevEndTimestamp = firebase.firestore.Timestamp.fromDate(prevPeriodEnd);
+
+        // Get orders for current period
+        const ordersSnapshot = await db.collection('orders')
+          .where('CreatedAt', '>=', startTimestamp)
+          .where('CreatedAt', '<=', endTimestamp)
+          .get();
+
+        // Get orders for previous period (for comparison)
+        const prevOrdersSnapshot = await db.collection('orders')
+          .where('CreatedAt', '>=', prevStartTimestamp)
+          .where('CreatedAt', '<=', prevEndTimestamp)
+          .get();
+
+        // Get commissions for current period
+        let commissionsSnapshot;
+        try {
+          commissionsSnapshot = await db.collection('commissions')
+            .where('CreatedAt', '>=', startTimestamp)
+            .where('CreatedAt', '<=', endTimestamp)
+            .get();
+        } catch (error) {
+          console.warn('Error with "commissions" collection, trying "commisiond":', error);
+
+          // Try with alternate collection name (commisiond)
+          commissionsSnapshot = await db.collection('commisiond')
+            .where('CreatedAt', '>=', startTimestamp)
+            .where('CreatedAt', '<=', endTimestamp)
+            .get();
+        }
+
+        // Get new customers for current period
+        const customersSnapshot = await db.collection('users')
+          .where('Role', '==', '3') // Role 3 for customers
+          .where('CreatedAt', '>=', startTimestamp)
+          .where('CreatedAt', '<=', endTimestamp)
+          .get();
+
+        // Get new customers for previous period
+        const prevCustomersSnapshot = await db.collection('users')
+          .where('Role', '==', '3') // Role 3 for customers
+          .where('CreatedAt', '>=', prevStartTimestamp)
+          .where('CreatedAt', '<=', prevEndTimestamp)
+          .get();
+
+        // Calculate summary metrics
+        const orders = ordersSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            date: data.CreatedAt.toDate(),
+            total: parseFloat(data.TotalAmount || 0),
+            userId: data.UserId,
+            status: data.Status || 'Pending'
+          };
+        });
+
+        const prevOrders = prevOrdersSnapshot.docs.length;
+        const totalSales = orders.reduce((sum, order) => sum + order.total, 0);
+        const totalPrevSales = prevOrdersSnapshot.docs.reduce((sum, doc) => {
+          const data = doc.data();
+          return sum + parseFloat(data.TotalAmount || 0);
+        }, 0);
+
+        // Calculate growth percentages
+        const ordersGrowth = prevOrders > 0 ? ((orders.length - prevOrders) / prevOrders * 100).toFixed(1) : 0;
+        const salesGrowth = totalPrevSales > 0 ? ((totalSales - totalPrevSales) / totalPrevSales * 100).toFixed(1) : 0;
+
+        // Process commission data
+        const commissions = commissionsSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            affiliateId: data.AffiliateId,
+            amount: parseFloat(data.Amount || 0),
+            date: data.CreatedAt.toDate(),
+            orderId: data.OrderId,
+            isPaid: data.IsPaid || data.Paid || false
+          };
+        });
+
+        const totalCommissions = commissions.reduce((sum, commission) => sum + commission.amount, 0);
+
+        // Count new customers
+        const newCustomersCount = customersSnapshot.size;
+        const prevNewCustomersCount = prevCustomersSnapshot.size;
+        const customersGrowth = prevNewCustomersCount > 0 ?
+          ((newCustomersCount - prevNewCustomersCount) / prevNewCustomersCount * 100).toFixed(1) : 0;
+
+        // Update summary cards
+        document.getElementById('totalSales').textContent = formatCurrency(totalSales);
+        document.getElementById('totalOrders').textContent = orders.length;
+        document.getElementById('totalCommissions').textContent = formatCurrency(totalCommissions);
+        document.getElementById('newCustomers').textContent = newCustomersCount;
+
+        // Update growth indicators
+        updateGrowthIndicator('salesGrowth', salesGrowth);
+        updateGrowthIndicator('ordersGrowth', ordersGrowth);
+        updateGrowthIndicator('customersGrowth', customersGrowth);
+
+        // Generate chart data
+        generateChartData(orders, commissions, 'daily'); // Default to daily view
+
+        // Generate top products data
+        await generateTopProductsData(orders);
+
+        // Generate top affiliates data
+        await generateTopAffiliatesData(commissions, orders);
+
+        // Generate customer acquisition data
+        await generateCustomerAcquisition(start, end);
+
+        console.log("Dashboard data loaded:", {
+          totalSales,
+          totalOrders: orders.length,
+          totalCommissions,
+          newCustomers: newCustomersCount
+        });
+
+      } catch (error) {
+        console.error('Error loading report data:', error);
+        document.getElementById('totalSales').textContent = 'Error';
+        document.getElementById('totalOrders').textContent = 'Error';
+        document.getElementById('totalCommissions').textContent = 'Error';
+        document.getElementById('newCustomers').textContent = 'Error';
+
+        // Check if it's a missing index error
+        if (error && error.message && error.message.includes('requires an index')) {
+          if (typeof Swal !== 'undefined') {
+            Swal.fire({
+              title: 'Missing Firestore Index',
+              html: 'This query requires a Firestore index. <br>Please click the link below to create it:<br>' +
+                '<a href="' + error.message.split('https://console.firebase')[1].split(' ')[0] + '" target="_blank">' +
+                'Create Firestore Index</a>',
+              icon: 'warning'
+            });
+          } else {
+            alert('Missing Firestore Index: ' + error.message);
+          }
+        } else {
+          if (typeof Swal !== 'undefined') {
+            Swal.fire({
+              title: 'Error',
+              text: 'Failed to load report data. Please try again later.',
+              icon: 'error'
+            });
+          } else {
+            alert('Error loading report data: ' + error.message);
+          }
+        }
+      }
+    }
+
+    function updateGrowthIndicator(elementId, growthValue) {
+      const element = document.getElementById(elementId);
+      if (!element) return;
+
+      const growth = parseFloat(growthValue);
+
+      if (growth > 0) {
+        element.className = 'badge bg-label-success';
+        element.textContent = `+${growth}%`;
+      } else if (growth < 0) {
+        element.className = 'badge bg-label-danger';
+        element.textContent = `${growth}%`;
+      } else {
+        element.className = 'badge bg-label-secondary';
+        element.textContent = `${growth}%`;
+      }
+    }
+
+    function generateChartData(orders, commissions, viewType) {
+      // Sort by date
+      orders.sort((a, b) => a.date - b.date);
+      commissions.sort((a, b) => a.date - b.date);
+
+      // Generate time periods based on view type
+      const periods = generateTimePeriods(startDate, endDate, viewType);
+
+      // Initialize data arrays
+      const salesData = Array(periods.length).fill(0);
+      const commissionsData = Array(periods.length).fill(0);
+
+      // Aggregate order data by period
+      orders.forEach(order => {
+        const index = getPeriodIndex(order.date, periods, viewType);
+        if (index !== -1) {
+          salesData[index] += order.total;
+        }
+      });
+
+      // Aggregate commission data by period
+      commissions.forEach(commission => {
+        const index = getPeriodIndex(commission.date, periods, viewType);
+        if (index !== -1) {
+          commissionsData[index] += commission.amount;
+        }
+      });
+
+      // Format x-axis labels based on view type
+      const labels = periods.map(period => {
+        if (viewType === 'daily') {
+          return period.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        } else if (viewType === 'weekly') {
+          const endOfWeek = new Date(period);
+          endOfWeek.setDate(endOfWeek.getDate() + 6);
+          return `${period.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+        } else { // monthly
+          return period.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        }
+      });
+
+      // Update chart
+      salesCommissionChart.updateOptions({
+        xaxis: {
+          categories: labels
+        },
+        series: [
+          {
+            name: 'Sales',
+            data: salesData.map(val => parseFloat(val.toFixed(2)))
+          },
+          {
+            name: 'Commissions',
+            data: commissionsData.map(val => parseFloat(val.toFixed(2)))
+          }
+        ]
+      });
+    }
+
+    function generateTimePeriods(start, end, viewType) {
+      const periods = [];
+      const current = new Date(start);
+
+      if (viewType === 'daily') {
+        while (current <= end) {
+          periods.push(new Date(current));
+          current.setDate(current.getDate() + 1);
+        }
+      } else if (viewType === 'weekly') {
+        // Set to start of week (Sunday)
+        const startOfWeek = new Date(current);
+        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+        current.setTime(startOfWeek.getTime());
+
+        while (current <= end) {
+          periods.push(new Date(current));
+          current.setDate(current.getDate() + 7);
+        }
+      } else { // monthly
+        current.setDate(1); // Start at beginning of month
+        while (current <= end) {
+          periods.push(new Date(current));
+          current.setMonth(current.getMonth() + 1);
+        }
+      }
+
+      return periods;
+    }
+
+    function getPeriodIndex(date, periods, viewType) {
+      if (viewType === 'daily') {
+        // Find matching day
+        return periods.findIndex(p =>
+          p.getFullYear() === date.getFullYear() &&
+          p.getMonth() === date.getMonth() &&
+          p.getDate() === date.getDate()
+        );
+      } else if (viewType === 'weekly') {
+        // Find which week the date belongs to
+        const dateObj = new Date(date);
+
+        for (let i = 0; i < periods.length; i++) {
+          const weekEnd = new Date(periods[i]);
+          weekEnd.setDate(weekEnd.getDate() + 6);
+
+          if (dateObj >= periods[i] && dateObj <= weekEnd) {
+            return i;
+          }
+        }
+      } else { // monthly
+        // Find which month the date belongs to
+        return periods.findIndex(p =>
+          p.getFullYear() === date.getFullYear() &&
+          p.getMonth() === date.getMonth()
+        );
+      }
+
+      return -1; // Not found in any period
+    }
+
+    function updateChartView(viewType) {
+      // This function would be called when switching between daily/weekly/monthly views
+      // Re-fetch or re-filter data based on the selected view
+      const selectedAffiliateId = document.getElementById('affiliateFilter').value;
+      const selectedProductId = document.getElementById('productFilter').value;
+
+      // For simplicity, we'll just reload all data
+      // In a real implementation, you might want to cache the data and just re-format it
+      loadReportData(startDate, endDate);
+    }
+
+    async function generateTopProductsData(orders) {
+      try {
+        // Get all order details
+        const orderIds = orders.map(order => order.id);
+
+        // Process in batches (Firestore "in" query limit is 10)
+        const batchSize = 10;
+        const orderItems = [];
+
+        for (let i = 0; i < orderIds.length; i += batchSize) {
+          const batch = orderIds.slice(i, i + batchSize);
+
+          if (batch.length === 0) continue;
+
+          const orderDetailsSnapshot = await db.collection('orderDetails')
+            .where('OrderId', 'in', batch)
+            .get().catch(async error => {
+              // Try alternative collection names if the first one fails
+              console.log('Trying alternative collection name:', error);
+              try {
+                return await db.collection('OrderDetials')
+                  .where('OrderId', 'in', batch)
+                  .get();
+              } catch (altError) {
+                console.log('Alternative collection name also failed:', altError);
+                // Try another variation
+                return await db.collection('OrderDetails')
+                  .where('OrderId', 'in', batch)
+                  .get();
+              }
+            });
+
+          orderDetailsSnapshot.forEach(doc => {
+            orderItems.push(doc.data());
+          });
+        }
+
+        // Load commission rates for products and brands ahead of time
+        const productIds = [...new Set(orderItems.map(item => item.ProductId).filter(id => id))];
+        const productCommissions = {};
+        const brandCommissions = {};
+
+        // Batch load product commission rates
+        if (productIds.length > 0) {
+          // Get products in batches of 10 (Firestore limit)
+          for (let i = 0; i < productIds.length; i += batchSize) {
+            const batch = productIds.slice(i, i + batchSize);
+            const productsSnapshot = await db.collection('products')
+              .where(firebase.firestore.FieldPath.documentId(), 'in', batch)
+              .get();
+
+            // Extract product commission rates and brand IDs
+            const brandIds = new Set();
+            const productToBrandMap = {};
+            productsSnapshot.forEach(doc => {
+              const data = doc.data();
+              if (data.Commission) {
+                productCommissions[doc.id] = parseFloat(data.Commission) / 100;
+              }
+              if (data.BrandId) {
+                brandIds.add(data.BrandId);
+                productToBrandMap[doc.id] = data.BrandId;
+              }
+            });
+
+            // Load brand commission rates
+            if (brandIds.size > 0) {
+              const brandIdsArray = [...brandIds];
+              for (let j = 0; j < brandIdsArray.length; j += batchSize) {
+                const brandBatch = brandIdsArray.slice(j, j + batchSize);
+                const brandsSnapshot = await db.collection('brands')
+                  .where(firebase.firestore.FieldPath.documentId(), 'in', brandBatch)
+                  .get();
+
+                brandsSnapshot.forEach(doc => {
+                  const data = doc.data();
+                  if (data.CommissionRate) {
+                    brandCommissions[doc.id] = parseFloat(data.CommissionRate) / 100;
+                  }
+                });
+              }
+            }
+          }
+        }
+
+        // Group by product and calculate metrics
+        const productStats = {};
+
+        orderItems.forEach(item => {
+          const productId = item.ProductId;
+          if (!productId) return;
+
+          if (!productStats[productId]) {
+            productStats[productId] = {
+              name: item.ProductName || 'Unknown Product',
+              orders: 0,
+              quantity: 0,
+              revenue: 0,
+              commission: 0
+            };
+          }
+
+          const price = parseFloat(item.Price || 0);
+          const quantity = parseInt(item.Quantity || 0);
+          const subTotal = parseFloat(item.SubTotal || (price * quantity));
+
+          productStats[productId].orders++;
+          productStats[productId].quantity += quantity;
+          productStats[productId].revenue += subTotal;
+
+          // Calculate commission based on product or brand rate
+          let commissionRate = 0.1; // Default 10%
+
+          // Check if we have the product commission rate
+          if (productCommissions[productId]) {
+            commissionRate = productCommissions[productId];
+          }
+          // Otherwise check if there's a brand commission rate
+          else if (productToBrandMap && productToBrandMap[productId]) {
+            const brandId = productToBrandMap[productId];
+            if (brandCommissions[brandId]) {
+              commissionRate = brandCommissions[brandId];
+            }
+          }
+
+          productStats[productId].commission += subTotal * commissionRate;
+        });
+
+        // Convert to array and sort by revenue
+        const productStatsArray = Object.entries(productStats).map(([id, stats]) => ({
+          id,
+          ...stats
+        }));
+
+        productStatsArray.sort((a, b) => b.revenue - a.revenue);
+
+        // Take top 5 products
+        const topProducts = productStatsArray.slice(0, 5);
+
+        // Update table
+        const tableBody = document.getElementById('topProductsTable').querySelector('tbody');
+        tableBody.innerHTML = '';
+
+        if (topProducts.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="4" class="text-center">No product data available</td></tr>';
+          return;
+        }
+
+        topProducts.forEach(product => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+                                                    <td>${product.name}</td>
+                                                    <td>${product.orders}</td>
+                                                    <td>${formatCurrency(product.revenue)}</td>
+                                                    <td>${formatCurrency(product.commission)}</td>
+                                                `;
+          tableBody.appendChild(row);
+        });
+
+        // Update commission distribution chart
+        commissionDistributionChart.updateOptions({
+          labels: topProducts.map(p => p.name),
+          series: topProducts.map(p => parseFloat(p.commission.toFixed(2)))
+        });
+
+      } catch (error) {
+        console.error('Error generating top products data:', error);
+        const tableBody = document.getElementById('topProductsTable').querySelector('tbody');
+        tableBody.innerHTML = '<tr><td colspan="4" class="text-center">Error loading product data</td></tr>';
+      }
+    }
+
+    async function generateTopAffiliatesData(commissions, orders) {
+      try {
+        // Group commissions by affiliate
+        const affiliateStats = {};
+
+        commissions.forEach(commission => {
+          const affiliateId = commission.affiliateId;
+          if (!affiliateId) return;
+
+          if (!affiliateStats[affiliateId]) {
+            affiliateStats[affiliateId] = {
+              name: affiliates[affiliateId]?.name || 'Unknown Affiliate',
+              orders: 0,
+              customers: 0,
+              commission: 0
+            };
+          }
+
+          affiliateStats[affiliateId].commission += commission.amount;
+          affiliateStats[affiliateId].orders++;
+        });
+
+        // Count unique customers per affiliate
+        const customerByAffiliate = {};
+
+        for (const order of orders) {
+          const commission = commissions.find(c => c.orderId === order.id);
+          if (commission && commission.affiliateId) {
+            if (!customerByAffiliate[commission.affiliateId]) {
+              customerByAffiliate[commission.affiliateId] = new Set();
+            }
+            customerByAffiliate[commission.affiliateId].add(order.userId);
+          }
+        }
+
+        // Add customer counts to affiliate stats
+        for (const affiliateId in customerByAffiliate) {
+          if (affiliateStats[affiliateId]) {
+            affiliateStats[affiliateId].customers = customerByAffiliate[affiliateId].size;
+          }
+        }
+
+        // Convert to array and sort by commission amount
+        const affiliateStatsArray = Object.entries(affiliateStats).map(([id, stats]) => ({
+          id,
+          ...stats
+        }));
+
+        affiliateStatsArray.sort((a, b) => b.commission - a.commission);
+
+        // Take top 5 affiliates
+        const topAffiliates = affiliateStatsArray.slice(0, 5);
+
+        // Update table
+        const tableBody = document.getElementById('topAffiliatesTable').querySelector('tbody');
+        tableBody.innerHTML = '';
+
+        if (topAffiliates.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="4" class="text-center">No affiliate data available</td></tr>';
+          return;
+        }
+
+        topAffiliates.forEach(affiliate => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+                                                    <td>${affiliate.name}</td>
+                                                    <td>${affiliate.customers}</td>
+                                                    <td>${affiliate.orders}</td>
+                                                    <td>${formatCurrency(affiliate.commission)}</td>
+                                                `;
+          tableBody.appendChild(row);
+        });
+
+      } catch (error) {
+        console.error('Error generating top affiliates data:', error);
+        const tableBody = document.getElementById('topAffiliatesTable').querySelector('tbody');
+        tableBody.innerHTML = '<tr><td colspan="4" class="text-center">Error loading affiliate data</td></tr>';
+      }
+    }
+
+    async function generateCustomerAcquisition(start, end) {
+      try {
+        // Get all customers
+        let customersSnapshot;
+        try {
+          // Try with composite index (Role + CreatedAt)
+          customersSnapshot = await db.collection('users')
+            .where('Role', '==', '3') // Role 3 for customers
+            .where('CreatedAt', '>=', firebase.firestore.Timestamp.fromDate(start))
+            .where('CreatedAt', '<=', firebase.firestore.Timestamp.fromDate(end))
+            .get();
+        } catch (indexError) {
+          console.warn('Index error for customer query:', indexError);
+
+          // Fallback: Get all customers in date range, then filter by role in memory
+          customersSnapshot = await db.collection('users')
+            .where('CreatedAt', '>=', firebase.firestore.Timestamp.fromDate(start))
+            .where('CreatedAt', '<=', firebase.firestore.Timestamp.fromDate(end))
+            .get();
+
+          // Filter in memory
+          customersSnapshot = {
+            forEach: callback => {
+              customersSnapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.Role === '3') {
+                  callback(doc);
+                }
+              });
+            },
+            size: customersSnapshot.docs.filter(doc => doc.data().Role === '3').length
+          };
+        }
+
+        // Generate time periods based on selected view
+        const viewType = document.querySelector('input[name="chartViewOption"]:checked').id;
+        const periodType = viewType === 'dailyView' ? 'daily' :
+          viewType === 'weeklyView' ? 'weekly' : 'monthly';
+        const periods = generateTimePeriods(start, end, periodType);
+
+        // Initialize data arrays
+        const directCustomers = Array(periods.length).fill(0);
+        const affiliateCustomers = Array(periods.length).fill(0);
+
+        // Process customers
+        customersSnapshot.forEach(doc => {
+          const customer = doc.data();
+          const date = customer.CreatedAt.toDate();
+          const index = getPeriodIndex(date, periods, periodType);
+
+          if (index !== -1) {
+            // Check if customer came through affiliate
+            if (customer.AffiliateId) {
+              affiliateCustomers[index]++;
+            } else {
+              directCustomers[index]++;
+            }
+          }
+        });
+
+        // Format x-axis labels
+        const labels = periods.map(period => {
+          if (periodType === 'daily') {
+            return period.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          } else if (periodType === 'weekly') {
+            const endOfWeek = new Date(period);
+            endOfWeek.setDate(endOfWeek.getDate() + 6);
+            return `${period.getDate()}/${period.getMonth() + 1} - ${endOfWeek.getDate()}/${endOfWeek.getMonth() + 1}`;
+          } else { // monthly
+            return period.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+          }
+        });
+
+        // Update chart
+        customerAcquisitionChart.updateOptions({
+          xaxis: {
+            categories: labels
+          },
+          series: [
+            {
+              name: 'Direct',
+              data: directCustomers
+            },
+            {
+              name: 'Affiliate Referral',
+              data: affiliateCustomers
+            }
+          ]
+        });
+
+      } catch (error) {
+        console.error('Error generating customer acquisition data:', error);
+      }
+    }
+
+    function filterReportData() {
+      const affiliateId = document.getElementById('affiliateFilter').value;
+      const productId = document.getElementById('productFilter').value;
+
+      // For simplicity, just reload the data with the current date range
+      // In a production app, you might want to cache data and filter client-side
+      loadReportData(startDate, endDate);
+
+      // Display a "filtered" message if filters are active
+      const filterActive = affiliateId || productId;
+      const filterMsg = document.getElementById('filterMessage');
+
+      if (filterActive && !filterMsg) {
+        const dateRangeCard = document.getElementById('reportrange').closest('.card');
+        const filterDiv = document.createElement('div');
+        filterDiv.id = 'filterMessage';
+        filterDiv.className = 'alert alert-info mt-3 mb-0';
+        filterDiv.innerHTML = `
+                                                <div class="d-flex align-items-center">
+                                                    <i class="ti ti-filter me-2"></i>
+                                                    <span>Report filtered by: ${affiliateId ? 'Affiliate, ' : ''}${productId ? 'Product' : ''}</span>
+                                                    <button type="button" class="btn btn-sm btn-icon ms-auto" onclick="clearFilters()">
+                                                        <i class="ti ti-x"></i>
+                                                    </button>
+                                                </div>
+                                            `;
+        dateRangeCard.after(filterDiv);
+      } else if (!filterActive && filterMsg) {
+        filterMsg.remove();
+      }
+    }
+
+    function clearFilters() {
+      document.getElementById('affiliateFilter').value = '';
+      document.getElementById('productFilter').value = '';
+      filterReportData();
+    }
+
+    function exportReport() {
+      try {
+        // Get report data
+        const reportData = {
+          dateRange: document.getElementById('reportrange').querySelector('span').textContent,
+          metrics: {
+            totalSales: document.getElementById('totalSales').textContent,
+            totalOrders: document.getElementById('totalOrders').textContent,
+            totalCommissions: document.getElementById('totalCommissions').textContent,
+            newCustomers: document.getElementById('newCustomers').textContent
+          }
+        };
+
+        // Create CSV content for basic metrics
+        let csvContent = "Report Period," + reportData.dateRange + "\n";
+        csvContent += "Total Sales," + reportData.metrics.totalSales + "\n";
+        csvContent += "Total Orders," + reportData.metrics.totalOrders + "\n";
+        csvContent += "Total Commissions," + reportData.metrics.totalCommissions + "\n";
+        csvContent += "New Customers," + reportData.metrics.newCustomers + "\n\n";
+
+        // Add top products
+        csvContent += "Top Products\n";
+        csvContent += "Product,Orders,Revenue,Commission\n";
+
+        const productsTable = document.getElementById('topProductsTable');
+        const productRows = productsTable.querySelectorAll('tbody tr');
+
+        productRows.forEach(row => {
+          if (row.cells.length >= 4) {
+            csvContent += [
+              row.cells[0].textContent,
+              row.cells[1].textContent,
+              row.cells[2].textContent,
+              row.cells[3].textContent
+            ].join(',') + "\n";
+          }
+        });
+
+        csvContent += "\nTop Affiliates\n";
+        csvContent += "Affiliate,Customers,Orders,Commission\n";
+
+        const affiliatesTable = document.getElementById('topAffiliatesTable');
+        const affiliateRows = affiliatesTable.querySelectorAll('tbody tr');
+
+        affiliateRows.forEach(row => {
+          if (row.cells.length >= 4) {
+            csvContent += [
+              row.cells[0].textContent,
+              row.cells[1].textContent,
+              row.cells[2].textContent,
+              row.cells[3].textContent
+            ].join(',') + "\n";
+          }
+        });
+
+        // Create download link
+        const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "reports_" + formatDateForFilename(new Date()) + ".csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+      } catch (error) {
+        console.error('Error exporting report:', error);
+        Swal.fire({
+          title: 'Export Failed',
+          text: 'An error occurred while exporting the report.',
+          icon: 'error'
+        });
+      }
+    }
+
+    function formatDateForFilename(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatCurrency(value) {
+      if (isNaN(value)) return '$0.00';
+      return '$' + parseFloat(value).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+    }
+  </script>
+}

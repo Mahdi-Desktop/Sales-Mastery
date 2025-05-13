@@ -1,141 +1,628 @@
 @model List<AspnetCoreMvcFull.DTO.Commission>
 @{
-    ViewData["Title"] = "Commission History";
-}
-
-@section VendorScripts {
-<script src="~/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+  ViewData["Title"] = "Commissions";
+  Layout = "_ContentNavbarLayout";
 }
 
 @section PageScripts {
-<script src="~/js/affiliate-commissions.js"></script>
+  <!-- Firebase Libraries -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <!-- Data Tables -->
+  <script src="~/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+
+  <!-- Our Services -->
+  <script src="~/js/firebase-init.js"></script>
+  <script src="~/js/services/firebaseService.js"></script>
+
+  <script>
+    let dataTable;
+    let affiliateId;
+
+    // Global brand cache to avoid repeated lookups
+    const brandCache = {};
+
+    // Initialize Firebase and load data
+    document.addEventListener('DOMContentLoaded', async function () {
+      try {
+        // Wait for Firebase to be initialized by firebase-init.js
+        document.addEventListener('firebaseReady', async function () {
+          console.log("Firebase is ready, initializing commissions page");
+
+          if (!firebaseService.db) {
+            firebaseService.db = firebase.firestore();
+          }
+
+          // Get all brands for caching
+          await loadBrands();
+
+          const userId = "@ViewBag.UserId";
+          const affiliate = await firebaseService.getAffiliateByUserId(userId);
+
+          if (!affiliate) {
+            showError("Could not find affiliate record");
+            return;
+          }
+
+          affiliateId = affiliate.affiliateId;
+          console.log("Using affiliate ID:", affiliateId);
+
+          // Show loading state
+          document.getElementById('loading-indicator').classList.remove('d-none');
+
+          // Load orders and calculate commissions
+          await loadCommissions(affiliateId);
+        }, { once: true });
+
+        // Check if Firebase is already initialized
+        if (window.firebaseInitialized) {
+          // Manually dispatch the event if Firebase is already initialized
+          console.log("Firebase already initialized, dispatching ready event");
+          document.dispatchEvent(new Event('firebaseReady'));
+        }
+      } catch (error) {
+        console.error("Error loading commissions:", error);
+        showError("Failed to load commissions: " + error.message);
+      } finally {
+        // Hide loading state (moved to after loadCommissions completes)
+        // document.getElementById('loading-indicator').classList.add('d-none');
+      }
+    });
+
+    // Load all brands and cache them
+    async function loadBrands() {
+      try {
+        const db = firebase.firestore();
+        const brandSnapshot = await db.collection('brands').get();
+
+        brandSnapshot.forEach(doc => {
+          const data = doc.data();
+          brandCache[doc.id] = {
+            name: data.Name || 'Unknown Brand',
+            commissionRate: data.CommissionRate || 0
+          };
+        });
+
+        console.log("Loaded brands:", brandCache);
+      } catch (error) {
+        console.error("Error loading brands:", error);
+      }
+    }
+
+    // Get orders and calculate commissions
+    async function loadCommissions(affiliateId) {
+      try {
+        const db = firebase.firestore();
+
+        // Get all customers referred by this affiliate
+        const customerSnapshot = await db.collection('users')
+          .where('Role', '==', '3')
+          .where('ReferenceId', '==', affiliateId)
+          .get();
+
+        console.log(`Found ${customerSnapshot.size} referred customers`);
+
+        if (customerSnapshot.empty) {
+          updateSummary(0, 0, 0);
+          renderCommissionsTable([]);
+          return;
+        }
+
+        // Get customer IDs
+        const customerIds = customerSnapshot.docs.map(doc => doc.id);
+
+        // Get all orders for these customers
+        const orders = [];
+        for (const customerId of customerIds) {
+          try {
+            // Try with PascalCase first
+            let orderSnapshot = await db.collection('orders')
+              .where('UserId', '==', customerId)
+              .get();
+
+            // If no results, try with camelCase
+            if (orderSnapshot.empty) {
+              orderSnapshot = await db.collection('orders')
+                .where('userId', '==', customerId)
+                .get();
+            }
+
+            console.log(`Found ${orderSnapshot.size} orders for customer ${customerId}`);
+
+            orderSnapshot.forEach(doc => {
+              const orderData = doc.data();
+              console.log(`Order ${doc.id} data:`, orderData);
+              orders.push({
+                orderId: doc.id,
+                ...orderData
+              });
+            });
+          } catch (error) {
+            console.error(`Error fetching orders for customer ${customerId}:`, error);
+          }
+        }
+
+        console.log(`Found ${orders.length} orders from referred customers`);
+
+        // Process each order and calculate commissions
+        const commissions = [];
+        let totalCommission = 0;
+        let paidCommission = 0;
+
+        for (const order of orders) {
+          try {
+            console.log(`Processing order ${order.orderId}:`, order);
+
+            // Check if order has embedded items first (preferred approach)
+            if (order.items && Array.isArray(order.items) && order.items.length > 0) {
+              console.log(`Using ${order.items.length} embedded items from order ${order.orderId}`);
+
+              for (const item of order.items) {
+                console.log(`Processing item:`, item);
+                // Extract product ID from the item
+                const productId = item.productId || item.ProductId;
+                if (!productId) {
+                  console.warn(`Item missing productId, skipping:`, item);
+                  continue;
+                }
+
+                const product = await getProduct(productId);
+                if (product) {
+                  const { commissionRate, brandName } = await getCommissionRate(product);
+
+                  // Extract quantity and calculate price
+                  // The structure from the database seems to be different from what we expected
+                  // Adjust according to the actual structure seen in orders collection
+                  const quantity = parseInt(item.quantity || 0);
+
+                  // Price might be stored in different ways depending on order structure
+                  let price = 0;
+                  if (item.price) {
+                    price = parseFloat(item.price);
+                  } else if (item.unitPrice) {
+                    price = parseFloat(item.unitPrice);
+                  } else if (product.Price) {
+                    price = parseFloat(product.Price);
+                  } else if (product.price) {
+                    price = parseFloat(product.price);
+                  }
+
+                  // Calculate subtotal and commission
+                  const subtotal = price * quantity;
+                  const commissionAmount = subtotal * (commissionRate / 100);
+
+                  console.log(`Product ID: ${productId}, Name: ${product.Name || 'Unknown'}`);
+                  console.log(`Price: $${price}, Quantity: ${quantity}, Subtotal: $${subtotal}`);
+                  console.log(`Commission Rate: ${commissionRate}%, Amount: $${commissionAmount.toFixed(2)}`);
+
+                  // Add to total
+                  totalCommission += commissionAmount;
+
+                  // Check if this order is paid
+                  const isPaid = order.Status === 'Completed' || order.Status === 'Delivered' ||
+                    order.status === 'Completed' || order.status === 'Delivered';
+                  if (isPaid) {
+                    paidCommission += commissionAmount;
+                  }
+
+                  commissions.push({
+                    orderId: order.orderId,
+                    productId: productId,
+                    productName: product.Name || product.name || item.name || item.Name || 'Unknown Product',
+                    brandName: brandName,
+                    orderDate: order.OrderDate || order.orderDate || order.CreatedAt || order.createdAt,
+                    quantity: quantity,
+                    unitPrice: price,
+                    subtotal: subtotal,
+                    commissionRate: commissionRate,
+                    commissionAmount: commissionAmount,
+                    isPaid: isPaid,
+                    orderStatus: order.Status || order.status || 'Pending'
+                  });
+                } else {
+                  console.warn(`Product ${productId} not found for item in order ${order.orderId}`);
+                }
+              }
+            } else {
+              // Fallback to orderDetails collection
+              let orderDetailsSnapshot = await db.collection('orderDetails')
+                .where('OrderId', '==', order.orderId)
+                .get();
+
+              console.log(`Found ${orderDetailsSnapshot.size} items in orderDetails collection for order ${order.orderId}`);
+
+              // Process each item in the order
+              for (const detailDoc of orderDetailsSnapshot.docs) {
+                const detail = detailDoc.data();
+                const product = await getProduct(detail.ProductId);
+
+                if (product) {
+                  const { commissionRate, brandName } = await getCommissionRate(product);
+                  const price = parseFloat(detail.Price || 0);
+                  const quantity = parseInt(detail.Quantity || 0);
+                  const subtotal = price * quantity;
+                  const commissionAmount = subtotal * (commissionRate / 100);
+
+                  // Add to total
+                  totalCommission += commissionAmount;
+
+                  // Check if this order is paid
+                  const isPaid = order.Status === 'Completed' || order.Status === 'Delivered';
+                  if (isPaid) {
+                    paidCommission += commissionAmount;
+                  }
+
+                  commissions.push({
+                    orderId: order.orderId,
+                    productId: detail.ProductId,
+                    productName: product.Name || detail.ProductName || 'Unknown Product',
+                    brandName: brandName,
+                    orderDate: order.OrderDate || order.CreatedAt,
+                    quantity: quantity,
+                    unitPrice: price,
+                    subtotal: subtotal,
+                    commissionRate: commissionRate,
+                    commissionAmount: commissionAmount,
+                    isPaid: isPaid,
+                    orderStatus: order.Status || 'Pending'
+                  });
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error processing order ${order.orderId}:`, error);
+          }
+        }
+
+        // Sort commissions by date (newest first)
+        commissions.sort((a, b) => {
+          const dateA = a.orderDate?.toDate ? a.orderDate.toDate() : new Date(a.orderDate || 0);
+          const dateB = b.orderDate?.toDate ? b.orderDate.toDate() : new Date(b.orderDate || 0);
+          return dateB - dateA;
+        });
+
+        console.log("Calculated commissions:", commissions);
+
+        // Update the summary and table
+        const unpaidCommission = totalCommission - paidCommission;
+        updateSummary(totalCommission, paidCommission, unpaidCommission);
+        renderCommissionsTable(commissions);
+
+      } catch (error) {
+        console.error("Error calculating commissions:", error);
+        showError("Failed to calculate commissions: " + error.message);
+      } finally {
+        // Hide loading indicator
+        document.getElementById('loading-indicator').classList.add('d-none');
+      }
+    }
+
+    // Get product data
+    async function getProduct(productId) {
+      try {
+        if (!productId) {
+          console.warn('Product ID is empty or null');
+          return null;
+        }
+        console.log(`Fetching product: ${productId}`);
+
+        const db = firebase.firestore();
+        const productDoc = await db.collection('products').doc(productId).get();
+
+        if (!productDoc.exists) {
+          console.warn(`Product ${productId} not found in products collection`);
+
+          // As a fallback, try searching in a different collection or by a different field
+          try {
+            // Try to find the product by an alternative ID field
+            const productQuery = await db.collection('products')
+              .where('productId', '==', productId)
+              .limit(1)
+              .get();
+
+            if (!productQuery.empty) {
+              const productData = productQuery.docs[0].data();
+              console.log(`Found product via query: ${productId}`, productData);
+              return {
+                productId: productId,
+                ...productData
+              };
+            }
+          } catch (queryError) {
+            console.error('Error in fallback product query:', queryError);
+          }
+
+          return null;
+        }
+
+        const productData = productDoc.data();
+        console.log(`Found product: ${productId}`, productData);
+        return {
+          productId: productDoc.id,
+          ...productData
+        };
+      } catch (error) {
+        console.error(`Error getting product ${productId}:`, error);
+        return null;
+      }
+    }
+
+    // Get commission rate for a product
+    async function getCommissionRate(product) {
+      try {
+        console.log('Getting commission rate for product:', product);
+
+        // First check if product has direct commission rate
+        if (product.Commission !== undefined) {
+          console.log(`Using direct commission rate from product: ${product.Commission}%`);
+          return {
+            commissionRate: parseFloat(product.Commission),
+            brandName: 'N/A'
+          };
+        }
+
+        // Check if product has a commission field with different casing
+        if (product.commission !== undefined) {
+          console.log(`Using direct commission rate from product (lowercase): ${product.commission}%`);
+          return {
+            commissionRate: parseFloat(product.commission),
+            brandName: 'N/A'
+          };
+        }
+
+        // Check brand
+        const brandId = product.BrandId || product.brandId;
+        if (brandId) {
+          console.log(`Looking for brand: ${brandId}`);
+
+          // Use cached brand if available
+          if (brandCache[brandId]) {
+            console.log(`Using cached brand: ${brandCache[brandId].name}, rate: ${brandCache[brandId].commissionRate}%`);
+            return {
+              commissionRate: parseFloat(brandCache[brandId].commissionRate),
+              brandName: brandCache[brandId].name
+            };
+          }
+
+          // Otherwise fetch from database
+          const db = firebase.firestore();
+          const brandDoc = await db.collection('brands').doc(brandId).get();
+
+          if (brandDoc.exists) {
+            const brandData = brandDoc.data();
+            console.log(`Found brand from database: ${brandData.Name}, rate: ${brandData.CommissionRate}%`);
+            return {
+              commissionRate: parseFloat(brandData.CommissionRate || 0),
+              brandName: brandData.Name || 'Unknown Brand'
+            };
+          }
+        }
+
+        // If all above fails, use hardcoded rates based on brand name if available
+        if (product.Brand || product.brand) {
+          const brandName = product.Brand || product.brand;
+          console.log(`No brand ID found, using brand name: ${brandName}`);
+
+          // Default commission rates based on brand name (as per previous requirements)
+          if (brandName.toLowerCase().includes('optimal')) {
+            return { commissionRate: 10, brandName: brandName };
+          } else if (brandName.toLowerCase().includes('loris')) {
+            return { commissionRate: 30, brandName: brandName };
+          } else if (brandName.toLowerCase().includes('dermokil')) {
+            return { commissionRate: 25, brandName: brandName };
+          }
+        }
+
+        // Default if no commission info found
+        console.warn('No commission rate found, using default 0%');
+        return {
+          commissionRate: 0,
+          brandName: 'No Brand'
+        };
+      } catch (error) {
+        console.error("Error getting commission rate:", error);
+        return { commissionRate: 0, brandName: 'Error' };
+      }
+    }
+
+    // Update the summary cards
+    function updateSummary(total, paid, unpaid) {
+      document.getElementById('total-earnings').textContent = `$${formatCurrency(total)}`;
+      document.getElementById('paid-earnings').textContent = `$${formatCurrency(paid)}`;
+      document.getElementById('unpaid-earnings').textContent = `$${formatCurrency(unpaid)}`;
+    }
+
+    // Render the commissions table
+    function renderCommissionsTable(commissions) {
+      try {
+        if (dataTable) {
+          dataTable.destroy();
+        }
+
+        // Check if we have any data
+        if (commissions.length === 0) {
+          document.getElementById('commissions-table-container').innerHTML =
+            '<div class="alert alert-info">No commission data found. When customers you refer make purchases, their commissions will appear here.</div>';
+          return;
+        }
+
+        // Format data for DataTable
+        const tableData = commissions.map(comm => {
+          // Format date
+          let formattedDate = 'Unknown';
+          if (comm.orderDate) {
+            const date = comm.orderDate.toDate ? comm.orderDate.toDate() : new Date(comm.orderDate);
+            formattedDate = date.toLocaleDateString();
+          }
+
+          return {
+            orderId: comm.orderId,
+            productName: `${comm.productName}<br><small class="text-muted">Brand: ${comm.brandName}</small>`,
+            quantity: comm.quantity,
+            price: `$${formatCurrency(comm.unitPrice)}`,
+            subtotal: `$${formatCurrency(comm.subtotal)}`,
+            rate: `${comm.commissionRate}%`,
+            amount: `$${formatCurrency(comm.commissionAmount)}`,
+            status: comm.isPaid ?
+              '<span class="badge bg-success">Paid</span>' :
+              '<span class="badge bg-warning">Pending</span>',
+            date: formattedDate
+          };
+        });
+
+        dataTable = $('#commissions-table').DataTable({
+          data: tableData,
+          columns: [
+            { data: 'orderId', title: 'Order ID' },
+            { data: 'productName', title: 'Product' },
+            { data: 'quantity', title: 'Qty' },
+            { data: 'price', title: 'Unit Price' },
+            { data: 'subtotal', title: 'Subtotal' },
+            { data: 'rate', title: 'Rate' },
+            { data: 'amount', title: 'Commission' },
+            { data: 'status', title: 'Status' },
+            { data: 'date', title: 'Date' }
+          ],
+          order: [[8, 'desc']],
+          responsive: true
+        });
+      } catch (error) {
+        console.error("Error rendering commissions table:", error);
+        showError("Error displaying commissions table: " + error.message);
+      }
+    }
+
+    // Helper function for formatting currency
+    function formatCurrency(value) {
+      if (isNaN(value)) return '0.00';
+      return parseFloat(value).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+    }
+
+    function showMessage(message) {
+      const alertDiv = document.createElement('div');
+      alertDiv.className = 'alert alert-success alert-dismissible fade show';
+      alertDiv.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+
+      document.getElementById('alerts-container').appendChild(alertDiv);
+
+      // Auto dismiss after 3 seconds
+      setTimeout(() => {
+        alertDiv.classList.remove('show');
+        setTimeout(() => alertDiv.remove(), 150);
+      }, 3000);
+    }
+
+    function showError(message) {
+      const alertDiv = document.createElement('div');
+      alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+      alertDiv.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+
+      document.getElementById('alerts-container').appendChild(alertDiv);
+    }
+  </script>
 }
 
-@* ************** Content ************** *@
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Commission History</h5>
-                <div class="d-flex align-items-center">
-                    <select id="statusFilter" class="form-select me-2" style="width: 150px;">
-                        <option value="">All Status</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Paid">Paid</option>
-                        <option value="Cancelled">Cancelled</option>
-                    </select>
-                    <input type="text" id="searchBox" class="form-control" placeholder="Search...">
-                </div>
-            </div>
-            <div class="table-responsive text-nowrap">
-                <table class="table datatable-commission">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Order ID</th>
-                            <th>Customer</th>
-                            <th>Amount</th>
-                            <th>Rate</th>
-                            <th>Status</th>
-                            <th>Paid Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model != null && Model.Any())
-                        {
-                            @foreach (var commission in Model)
-                            {
-                                <tr>
-                                    <td>@commission.CreatedAt.ToDateTime().ToString("MMM dd, yyyy")</td>
-                                    <td>#@commission.OrderId</td>
-                                    <td>@commission.CustomerId</td>
-                                    <td>$@commission.Amount.ToString("F2")</td>
-                                    <td>@commission.Rate%</td>
-                                    <td>
-                                        @switch (commission.Status)
-                                        {
-                                            case "Paid":
-                                                <span class="badge bg-label-success">Paid</span>
-                                                break;
-                                            case "Pending":
-                                                <span class="badge bg-label-warning">Pending</span>
-                                                break;
-                                            case "Cancelled":
-                                                <span class="badge bg-label-danger">Cancelled</span>
-                                                break;
-                                            default:
-                                                <span class="badge bg-label-secondary">@commission.Status</span>
-                                                break;
-                                        }
-                                    </td>
-                                    <td>
-                                        @(commission.PaidAt.HasValue 
-                                            ? commission.PaidAt.Value.ToDateTime().ToString("MMM dd, yyyy") 
-                                            : "-")
-                                    </td>
-                                </tr>
-                            }
-                        }
-                        else
-                        {
-                            <tr>
-                                <td colspan="7" class="text-center">No commission records found</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-            <div class="card-footer">
-                <div class="row">
-                    <div class="col-12 col-md-6">
-                        <div class="alert alert-info mb-0">
-                            <div class="d-flex">
-                                <i class="ti ti-info-circle me-2 mt-1"></i>
-                                <div>
-                                    <h6 class="alert-heading mb-1">Commission Information</h6>
-                                    <p class="mb-0">Commissions are processed after customer orders are fulfilled. Pending commissions will be paid according to the payment schedule.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-6 mt-3 mt-md-0">
-                        <div class="card bg-label-primary h-100 mb-0">
-                            <div class="card-body d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h5 class="mb-0">Need Help?</h5>
-                                    <p class="mb-0">Contact our affiliate support team</p>
-                                </div>
-                                <a href="mailto:affiliate-support@example.com" class="btn btn-primary">Contact Support</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+@section PageStyles {
+  <link rel="stylesheet" href="~/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
+  <link rel="stylesheet" href="~/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+  <style>
+    .loading-overlay {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: rgba(255, 255, 255, 0.7);
+      border-radius: .5rem;
+      padding: 1rem;
+    }
+
+    .spinner-border {
+      width: 3rem;
+      height: 3rem;
+      border-width: .25rem;
+    }
+  </style>
+}
+
+<div class="container-xxl flex-grow-1 container-p-y">
+  <h4 class="fw-bold py-3 mb-4">
+    <span class="text-muted fw-light">Affiliate /</span> Commissions
+  </h4>
+
+  <div id="alerts-container"></div>
+
+  <!-- Loading Indicator -->
+  <div id="loading-indicator" class="loading-overlay mb-4 d-none">
+    <div class="spinner-border text-primary me-2" role="status">
+      <span class="visually-hidden">Loading...</span>
     </div>
+    <div>
+      <h5 class="mb-0">Calculating commissions...</h5>
+      <small class="text-muted">This may take a moment if you have many customers</small>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Total Earnings</h5>
+          <h2 id="total-earnings" class="display-6">$0.00</h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Paid Earnings</h5>
+          <h2 id="paid-earnings" class="display-6">$0.00</h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Pending Payments</h5>
+          <h2 id="unpaid-earnings" class="display-6">$0.00</h2>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Commissions Table -->
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="card-title">All Commissions</h5>
+    </div>
+    <div class="card-body">
+      <div id="commissions-table-container" class="table-responsive">
+        <table id="commissions-table" class="table table-striped">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Product</th>
+              <th>Qty</th>
+              <th>Unit Price</th>
+              <th>Subtotal</th>
+              <th>Rate</th>
+              <th>Commission</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Will be populated by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
-
-
-    <script>
-        (function () {
-            var table = $('.datatable-commission').DataTable({
-                dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6 d-flex justify-content-end"f>>t<"row"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
-                lengthMenu: [10, 25, 50, 100],
-                language: {
-                    search: '_INPUT_',
-                    searchPlaceholder: 'Search...'
-                }
-            });
-
-            // Apply custom search
-            $('#searchBox').on('keyup', function () {
-                table.search(this.value).draw();
-            });
-
-            // Apply status filter
-            $('#statusFilter').on('change', function () {
-                var status = $(this).val();
-                table.column(5).search(status).draw();
-            });
-        });
-    </script>

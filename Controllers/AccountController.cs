@@ -13,7 +13,7 @@ namespace AspnetCoreMvcFull.Controllers
     private readonly AddressService _addressService;
     private readonly AffiliateService _affiliateService;
     private readonly ILogger<AccountController> _logger;
-
+    
     public AccountController(
         UserService userService,
         AddressService addressService,
@@ -169,6 +169,7 @@ namespace AspnetCoreMvcFull.Controllers
         return RedirectToAction("Settings");
       }
     }
+
 
     // Update security settings (password)
     [HttpPost]

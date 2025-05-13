@@ -1,0 +1,566 @@
+@{
+    ViewData["Title"] = "Admin Affiliates";
+    Layout = "_ContentNavbarLayout";
+}
+
+@section VendorStyles {
+    <link rel="stylesheet" href="~/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/sweetalert2/sweetalert2.css" />
+}
+
+<div class="container-xxl flex-grow-1 container-p-y">
+@*     <h4 class="fw-bold py-3 mb-4">
+        <span class="text-muted fw-light">Admin /</span> Affiliates
+    </h4> *@
+
+    <!-- Affiliates List Card -->
+    <div class="card">
+        <div class="card-header border-bottom">
+            <h5 class="card-title mb-3">Affiliate Management</h5>
+            <div class="d-flex justify-content-between align-items-center row pb-2 gap-3 gap-md-0">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="searchAffiliate" placeholder="Search affiliate...">
+                </div>
+                <div class="col-md-4 text-end">
+                    <button type="button" class="btn btn-primary" id="addAffiliateBtn">
+                        <i class="ti ti-plus me-1"></i>Add New Affiliate
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-datatable table-responsive">
+            <table class="datatables-affiliates table border-top" id="affiliatesTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Customers</th>
+                        <th>Commission</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data will be populated with JavaScript -->
+                    <tr>
+                        <td colspan="7" class="text-center">Loading affiliates...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add/Edit Affiliate Modal -->
+    <div class="modal fade" id="affiliateModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Add New Affiliate</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="affiliateForm">
+                        <input type="hidden" id="affiliateId">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="firstName" class="form-label">First Name</label>
+                                <input type="text" id="firstName" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="lastName" class="form-label">Last Name</label>
+                                <input type="text" id="lastName" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" id="email" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="phoneNumber" class="form-label">Phone Number</label>
+                                <input type="text" id="phoneNumber" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">Password <small>(for new accounts)</small></label>
+                                <input type="password" id="password" class="form-control">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="status" class="form-label">Status</label>
+                                <select id="status" class="form-select">
+                                    <option value="Active">Active</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Suspended">Suspended</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="saveAffiliate">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Firebase Scripts -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+@section VendorScripts {
+    <script src="~/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+    <script src="~/vendor/libs/sweetalert2/sweetalert2.js"></script>
+}
+
+<!-- Initialize Firebase -->
+<script>
+    // Pass Firebase configuration from server to client
+    window.firebaseConfig = {
+        apiKey: "@ViewBag.FirebaseApiKey",
+        authDomain: "@ViewBag.FirebaseProjectId" + ".firebaseapp.com",
+        projectId: "@ViewBag.FirebaseProjectId",
+        storageBucket: "@ViewBag.FirebaseStorageBucket",
+        messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+        appId: "@ViewBag.FirebaseAppId"
+    };
+
+    // Set user context for access control
+    window.userContext = {
+        userId: "@ViewBag.UserId",
+        isAdmin: @(ViewBag.IsAdmin == "1" ? "true" : "false"),
+        isAffiliate: @(ViewBag.IsAffiliate == "1" ? "true" : "false"),
+        isCustomer: @(ViewBag.IsCustomer == "1" ? "true" : "false")
+    };
+</script>
+<script src="~/js/admin-libs-loader.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize Firebase
+        if (typeof firebase === 'undefined') {
+            console.error('Firebase SDK not loaded');
+            return;
+        }
+
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(window.firebaseConfig);
+            }
+            const db = firebase.firestore();
+
+            loadAffiliates(db);
+            setupEventListeners(db);
+        } catch (error) {
+            console.error('Error initializing Firebase:', error);
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to connect to database. Please try again later.',
+                    icon: 'error'
+                });
+            } else {
+                alert('Failed to connect to database. Please try again later.');
+            }
+        }
+    });
+
+    function setupEventListeners(db) {
+        // Add affiliate button
+        document.getElementById('addAffiliateBtn').addEventListener('click', function() {
+            document.getElementById('modalTitle').textContent = 'Add New Affiliate';
+            document.getElementById('affiliateForm').reset();
+            document.getElementById('affiliateId').value = '';
+            document.getElementById('password').required = true;
+
+            // Show modal
+            new bootstrap.Modal(document.getElementById('affiliateModal')).show();
+        });
+
+        // Save affiliate button
+        document.getElementById('saveAffiliate').addEventListener('click', function() {
+            saveAffiliate(db);
+        });
+
+        // Search functionality
+        document.getElementById('searchAffiliate').addEventListener('keyup', function() {
+            const searchValue = this.value.toLowerCase();
+
+            // If DataTable is initialized, use its search
+            if ($.fn.DataTable.isDataTable('#affiliatesTable')) {
+                $('#affiliatesTable').DataTable().search(searchValue).draw();
+            }
+        });
+    }
+
+    async function loadAffiliates(db) {
+        const tableBody = document.querySelector('#affiliatesTable tbody');
+
+        try {
+            // Get affiliates (users with role = 2)
+            const affiliateSnapshot = await db.collection('users')
+                .where('Role', '==', '2')  // Role 2 for affiliates
+                .get();
+
+            if (affiliateSnapshot.empty) {
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No affiliates found</td></tr>';
+                return;
+            }
+
+            // Process and display data
+            const affiliates = [];
+
+            for (const doc of affiliateSnapshot.docs) {
+                const data = doc.data();
+
+                // For each affiliate, get their customer count
+                const customersSnapshot = await db.collection('users')
+                    .where('Role', '==', '3')  // Role 3 for customers
+                    .where('ReferenceId', '==', doc.id)
+                    .get();
+
+                // Get commission data
+                const commissionsSnapshot = await db.collection('commissions')
+                    .where('AffiliateId', '==', doc.id)
+                    .get();
+
+                let totalCommission = 0;
+                commissionsSnapshot.forEach(commission => {
+                    totalCommission += parseFloat(commission.data().Amount || 0);
+                });
+
+                affiliates.push({
+                    id: doc.id,
+                    name: `${data.FirstName || ''} ${data.LastName || ''}`.trim(),
+                    email: data.Email || '',
+                    phone: data.PhoneNumber || '',
+                    customerCount: customersSnapshot.size,
+                    commission: totalCommission,
+                    status: data.Status || 'Active',
+                    data: data
+                });
+            }
+
+            // Render table
+            tableBody.innerHTML = '';
+
+            affiliates.forEach(affiliate => {
+                const row = document.createElement('tr');
+
+                // Create status badge
+                let statusBadgeClass = 'bg-label-success';
+                if (affiliate.status === 'Pending') statusBadgeClass = 'bg-label-warning';
+                if (affiliate.status === 'Suspended') statusBadgeClass = 'bg-label-danger';
+
+                row.innerHTML = `
+                    <td>
+                        <div class="d-flex justify-content-start align-items-center">
+                            <div class="avatar-wrapper">
+                                <div class="avatar avatar-sm me-2">
+                                    <span class="avatar-initial rounded-circle bg-label-primary">
+                                        ${affiliate.name.charAt(0).toUpperCase()}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-column">
+                                <a href="/Admin/AffiliateDetails/${affiliate.id}" class="text-body text-truncate fw-semibold">
+                                    ${affiliate.name}
+                                </a>
+                            </div>
+                        </div>
+                    </td>
+                    <td>${affiliate.email}</td>
+                    <td>${affiliate.phone}</td>
+                    <td>${affiliate.customerCount}</td>
+                    <td>$${affiliate.commission.toFixed(2)}</td>
+                    <td><span class="badge ${statusBadgeClass}">${affiliate.status}</span></td>
+                    <td>
+                        <div class="dropdown">
+                            <button type="button" class="btn btn-sm dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
+                                <i class="ti ti-dots-vertical"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item" href="/Admin/AffiliateDetails/${affiliate.id}">
+                                    <i class="ti ti-eye me-1"></i> View Details
+                                </a>
+                                <button class="dropdown-item edit-affiliate" data-id="${affiliate.id}">
+                                    <i class="ti ti-edit me-1"></i> Edit
+                                </button>
+                                <button class="dropdown-item text-danger delete-affiliate" data-id="${affiliate.id}">
+                                    <i class="ti ti-trash me-1"></i> Delete
+                                </button>
+                            </div>
+                        </div>
+                    </td>
+                `;
+
+                tableBody.appendChild(row);
+
+                // Add event listener for edit button
+                const editBtn = row.querySelector('.edit-affiliate');
+                editBtn.addEventListener('click', () => editAffiliate(db, affiliate));
+
+                // Add event listener for delete button
+                const deleteBtn = row.querySelector('.delete-affiliate');
+                deleteBtn.addEventListener('click', () => deleteAffiliate(db, affiliate.id, affiliate.name));
+            });
+
+            // Initialize DataTable
+            if ($.fn.DataTable) {
+                // Destroy existing DataTable instance if it exists
+                if ($.fn.DataTable.isDataTable('#affiliatesTable')) {
+                    $('#affiliatesTable').DataTable().destroy();
+                }
+
+                $('#affiliatesTable').DataTable({
+                    responsive: true,
+                    pageLength: 10,
+                    language: {
+                        search: '',
+                        searchPlaceholder: 'Search affiliates'
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error loading affiliates:', error);
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error loading affiliate data</td></tr>';
+        }
+    }
+
+    function editAffiliate(db, affiliate) {
+        document.getElementById('modalTitle').textContent = 'Edit Affiliate';
+        document.getElementById('affiliateId').value = affiliate.id;
+        document.getElementById('firstName').value = affiliate.data.FirstName || '';
+        document.getElementById('lastName').value = affiliate.data.LastName || '';
+        document.getElementById('email').value = affiliate.data.Email || '';
+        document.getElementById('phoneNumber').value = affiliate.data.PhoneNumber || '';
+        document.getElementById('status').value = affiliate.status;
+
+        // Password is not required for editing
+        document.getElementById('password').required = false;
+
+        // Show modal
+        new bootstrap.Modal(document.getElementById('affiliateModal')).show();
+    }
+
+    async function saveAffiliate(db) {
+        try {
+            const affiliateId = document.getElementById('affiliateId').value;
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+            const email = document.getElementById('email').value;
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const status = document.getElementById('status').value;
+            const password = document.getElementById('password').value;
+
+            if (!firstName || !lastName || !email) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Please fill in all required fields',
+                        icon: 'error'
+                    });
+                } else {
+                    alert('Please fill in all required fields');
+                }
+                return;
+            }
+
+            // Show loading
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Saving...',
+                    didOpen: () => {
+                        Swal.showLoading();
+                    },
+                    allowOutsideClick: false
+                });
+            }
+
+            if (affiliateId) {
+                // Update existing affiliate
+                const affiliateRef = db.collection('users').doc(affiliateId);
+
+                const updateData = {
+                    FirstName: firstName,
+                    LastName: lastName,
+                    Email: email,
+                    PhoneNumber: phoneNumber,
+                    Status: status,
+                    UpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                // Update password only if provided
+                if (password) {
+                    // In a real app, you would hash the password here
+                    updateData.Password = password;
+                }
+
+                await affiliateRef.update(updateData);
+
+                // Close the modal
+                bootstrap.Modal.getInstance(document.getElementById('affiliateModal')).hide();
+
+                // Clear the table immediately
+                const tableBody = document.querySelector('#affiliatesTable tbody');
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center">Reloading affiliates...</td></tr>';
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Success',
+                        text: 'Affiliate updated successfully',
+                        icon: 'success'
+                    });
+                } else {
+                    alert('Affiliate updated successfully');
+                }
+
+                // Reload affiliates table with a slight delay
+                setTimeout(() => loadAffiliates(db), 100);
+            } else {
+                // Create new affiliate
+                if (!password) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Error',
+                            text: 'Password is required for new affiliates',
+                            icon: 'error'
+                        });
+                    } else {
+                        alert('Password is required for new affiliates');
+                    }
+                    return;
+                }
+
+                const newAffiliateData = {
+                    FirstName: firstName,
+                    LastName: lastName,
+                    Email: email,
+                    PhoneNumber: phoneNumber,
+                    Role: '2', // Role 2 for affiliates
+                    Status: status,
+                    Password: password, // In a real app, you would hash the password
+                    CreatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    UpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                await db.collection('users').add(newAffiliateData);
+
+                // Close the modal
+                bootstrap.Modal.getInstance(document.getElementById('affiliateModal')).hide();
+
+                // Clear the table immediately
+                const tableBody = document.querySelector('#affiliatesTable tbody');
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center">Reloading affiliates...</td></tr>';
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Success',
+                        text: 'Affiliate created successfully',
+                        icon: 'success'
+                    });
+                } else {
+                    alert('Affiliate created successfully');
+                }
+
+                // Reload affiliates table with a slight delay
+                setTimeout(() => loadAffiliates(db), 100);
+            }
+        } catch (error) {
+            console.error('Error saving affiliate:', error);
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to save affiliate. Please try again.',
+                    icon: 'error'
+                });
+            } else {
+                alert('Failed to save affiliate. Please try again.');
+            }
+        }
+    }
+
+    async function deleteAffiliate(db, affiliateId, affiliateName) {
+        try {
+            if (typeof Swal === 'undefined') {
+                if (confirm(`Do you want to delete ${affiliateName}?`)) {
+                    await db.collection('users').doc(affiliateId).delete();
+                    alert('Affiliate has been deleted');
+                    // Clear the table immediately
+                    const tableBody = document.querySelector('#affiliatesTable tbody');
+                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center">Reloading affiliates...</td></tr>';
+                    // Reload with a slight delay to ensure UI updates
+                    setTimeout(() => loadAffiliates(db), 100);
+                }
+                return;
+            }
+
+            const result = await Swal.fire({
+                title: 'Are you sure?',
+                text: `Do you want to delete ${affiliateName}?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete it',
+                cancelButtonText: 'No, cancel'
+            });
+
+            if (result.isConfirmed) {
+                // Check for associated customers
+                const customersSnapshot = await db.collection('users')
+                    .where('Role', '==', '3')
+                    .where('ReferenceId', '==', affiliateId)
+                    .get();
+
+                if (!customersSnapshot.empty) {
+                    // Ask for confirmation if there are associated customers
+                    const confirmTransfer = await Swal.fire({
+                        title: 'Warning',
+                        text: `This affiliate has ${customersSnapshot.size} associated customers. Do you want to proceed with deletion?`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes, delete anyway',
+                        cancelButtonText: 'No, cancel'
+                    });
+
+                    if (!confirmTransfer.isConfirmed) {
+                        return;
+                    }
+                }
+
+                // Delete affiliate
+                await db.collection('users').doc(affiliateId).delete();
+
+                // Clear the table immediately
+                const tableBody = document.querySelector('#affiliatesTable tbody');
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center">Reloading affiliates...</td></tr>';
+
+                // Show success message
+                Swal.fire({
+                    title: 'Deleted!',
+                    text: 'Affiliate has been deleted.',
+                    icon: 'success'
+                });
+
+                // Reload affiliates table with a slight delay to ensure UI updates
+                setTimeout(() => loadAffiliates(db), 100);
+            }
+        } catch (error) {
+            console.error('Error deleting affiliate:', error);
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to delete affiliate. Please try again.',
+                    icon: 'error'
+                });
+            } else {
+                alert('Failed to delete affiliate. Please try again.');
+            }
+        }
+    }
+</script>

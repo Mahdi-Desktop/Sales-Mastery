@@ -24,10 +24,10 @@ namespace AspnetCoreMvcFull.DTO
     public required string Email { get; set; }
 
     [FirestoreProperty]
-    public  required string Password { get; set; }
+    public required string Password { get; set; }
 
     [FirestoreProperty]
-    public  required string PhoneNumber { get; set; }
+    public required string PhoneNumber { get; set; }
 
     [FirestoreProperty]
     public required string Role { get; set; } // 'Admin', 'Affiliate', 'Customer'
@@ -49,7 +49,7 @@ namespace AspnetCoreMvcFull.DTO
     public List<string>? AffiliateId { get; set; } = new List<string>();
 
     [FirestoreProperty]
-    public List<string>? OrderId { get; set; } = new List<string>();
+    public List<object>? OrderId { get; set; } = new List<object>();
 
     [FirestoreProperty]
     public List<string>? InvoiceId { get; set; } = new List<string>();

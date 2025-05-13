@@ -17,6 +17,30 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <!-- Helper script for file uploads -->
+    <script>
+        // Check if Firebase modules are available
+        window.addEventListener('DOMContentLoaded', function () {
+            setTimeout(function () {
+                if (typeof firebase === 'undefined') {
+                    console.error('Firebase SDK not loaded');
+                    alert('Firebase SDK failed to load. Some features may not work properly.');
+                } else {
+                    console.log('Firebase SDK loaded');
+
+                    // Check for Storage module specifically
+                    if (typeof firebase.storage !== 'function') {
+                        console.error('Firebase Storage module not available');
+                        alert('Firebase Storage module is not available. Image uploads may not work properly.');
+                    } else {
+                        console.log('Firebase Storage module loaded');
+                    }
+                }
+            }, 1000);
+        });
+    </script>
 }
 
 <script>
@@ -74,7 +98,8 @@
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label" for="Discount">Discount (%)</label>
-                        <input type="number" class="form-control" id="Discount" name="Discount" min="0" max="100" value="0" />
+                        <input type="number" class="form-control" id="Discount" name="Discount" min="0" max="100"
+                            value="0" />
                         <div class="invalid-feedback">Please enter a valid discount (0-100)</div>
                     </div>
                 </div>
@@ -97,7 +122,8 @@
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label" for="Commission">Commission (%)</label>
-                        <input type="number" class="form-control" id="Commission" name="Commission" min="0" max="100" value="30" />
+                        <input type="number" class="form-control" id="Commission" name="Commission" min="0" max="100"
+                            value="30" />
                         <div class="invalid-feedback">Please enter a valid commission (0-100)</div>
                     </div>
                 </div>
@@ -124,6 +150,3 @@
         </div>
     </form>
 </div>
-
-
-

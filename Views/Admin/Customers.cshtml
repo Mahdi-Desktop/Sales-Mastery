@@ -1,0 +1,621 @@
+@{
+    ViewData["Title"] = "Admin Customers";
+    Layout = "_ContentNavbarLayout";
+}
+
+@section VendorStyles {
+    <link rel="stylesheet" href="~/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/sweetalert2/sweetalert2.css" />
+}
+
+<div class="container-xxl flex-grow-1 container-p-y">
+@*     <h4 class="fw-bold py-3 mb-4">
+        <span class="text-muted fw-light">Admin /</span> Customers
+    </h4> *@
+
+    <!-- Customers List Card -->
+    <div class="card">
+        <div class="card-header border-bottom">
+            <h5 class="card-title mb-3">Customer Management</h5>
+            <div class="d-flex justify-content-between align-items-center row pb-2 gap-3 gap-md-0">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="searchCustomer" placeholder="Search customer...">
+                </div>
+                <div class="col-md-4 text-end">
+                    <button type="button" class="btn btn-primary" id="addCustomerBtn">
+                        <i class="ti ti-plus me-1"></i>Add New Customer
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-datatable table-responsive">
+            <table class="datatables-customers table border-top" id="customersTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Orders</th>
+                        <th>Affiliate</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data will be populated with JavaScript -->
+                    <tr>
+                        <td colspan="7" class="text-center">Loading customers...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add/Edit Customer Modal -->
+    <div class="modal fade" id="customerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Add New Customer</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="customerForm">
+                        <input type="hidden" id="customerId">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="firstName" class="form-label">First Name</label>
+                                <input type="text" id="firstName" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="lastName" class="form-label">Last Name</label>
+                                <input type="text" id="lastName" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" id="email" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="phoneNumber" class="form-label">Phone Number</label>
+                                <input type="text" id="phoneNumber" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">Password <small>(for new accounts)</small></label>
+                                <input type="password" id="password" class="form-control">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="affiliateId" class="form-label">Affiliate</label>
+                                <select id="affiliateId" class="form-select">
+                                    <option value="">No Affiliate</option>
+                                    <!-- Affiliate options will be added with JavaScript -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="status" class="form-label">Status</label>
+                                <select id="status" class="form-select">
+                                    <option value="Active">Active</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Suspended">Suspended</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="saveCustomer">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Firebase Scripts -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+@section VendorScripts {
+    <script src="~/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+    <script src="~/vendor/libs/sweetalert2/sweetalert2.js"></script>
+}
+
+@section PageScripts {
+    <!-- Initialize Firebase -->
+    <script>
+        // Pass Firebase configuration from server to client
+        window.firebaseConfig = {
+            apiKey: "@ViewBag.FirebaseApiKey",
+            authDomain: "@ViewBag.FirebaseProjectId" + ".firebaseapp.com",
+            projectId: "@ViewBag.FirebaseProjectId",
+            storageBucket: "@ViewBag.FirebaseStorageBucket",
+            messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+            appId: "@ViewBag.FirebaseAppId"
+        };
+
+        // Set user context for access control
+        window.userContext = {
+            userId: "@ViewBag.UserId",
+            isAdmin: @(ViewBag.IsAdmin == "1" ? "true" : "false"),
+            isAffiliate: @(ViewBag.IsAffiliate == "1" ? "true" : "false"),
+            isCustomer: @(ViewBag.IsCustomer == "1" ? "true" : "false")
+        };
+    </script>
+    <script src="~/js/admin-libs-loader.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize Firebase
+            if (typeof firebase === 'undefined') {
+                console.error('Firebase SDK not loaded');
+                return;
+            }
+
+            try {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(window.firebaseConfig);
+                }
+                const db = firebase.firestore();
+
+                loadAffiliates(db);
+                loadCustomers(db);
+                setupEventListeners(db);
+            } catch (error) {
+                console.error('Error initializing Firebase:', error);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Failed to connect to database. Please try again later.',
+                        icon: 'error'
+                    });
+                } else {
+                    alert('Failed to connect to database. Please try again later.');
+                }
+            }
+        });
+
+        function setupEventListeners(db) {
+            // Add customer button
+            document.getElementById('addCustomerBtn').addEventListener('click', function() {
+                document.getElementById('modalTitle').textContent = 'Add New Customer';
+                document.getElementById('customerForm').reset();
+                document.getElementById('customerId').value = '';
+                document.getElementById('password').required = true;
+
+                // Show modal
+                new bootstrap.Modal(document.getElementById('customerModal')).show();
+            });
+
+            // Save customer button
+            document.getElementById('saveCustomer').addEventListener('click', function() {
+                saveCustomer(db);
+            });
+
+            // Search functionality
+            document.getElementById('searchCustomer').addEventListener('keyup', function() {
+                const searchValue = this.value.toLowerCase();
+
+                // If DataTable is initialized, use its search
+                if ($.fn.DataTable.isDataTable('#customersTable')) {
+                    $('#customersTable').DataTable().search(searchValue).draw();
+                }
+            });
+        }
+
+        async function loadAffiliates(db) {
+            try {
+                const affiliateSelect = document.getElementById('affiliateId');
+
+                // Get all affiliates (users with role = 2)
+                const affiliateSnapshot = await db.collection('users')
+                    .where('Role', '==', '2')  // Role 2 for affiliates
+                    .get();
+
+                // Add options to select
+                affiliateSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    const name = `${data.FirstName || ''} ${data.LastName || ''}`.trim() || data.Email || 'Unknown';
+
+                    const option = document.createElement('option');
+                    option.value = doc.id;
+                    option.textContent = name;
+                    affiliateSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading affiliates:', error);
+            }
+        }
+
+        async function loadCustomers(db) {
+            const tableBody = document.querySelector('#customersTable tbody');
+
+            try {
+                // Get customers (users with role = 3)
+                const customerSnapshot = await db.collection('users')
+                    .where('Role', '==', '3')  // Role 3 for customers
+                    .get();
+
+                if (customerSnapshot.empty) {
+                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No customers found</td></tr>';
+                    return;
+                }
+
+                // Process and display data
+                const customers = [];
+                const affiliates = {};
+
+                // First, get all affiliates for reference
+                const affiliateSnapshot = await db.collection('users').where('Role', '==', '2').get();
+                affiliateSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    affiliates[doc.id] = {
+                        name: `${data.FirstName || ''} ${data.LastName || ''}`.trim() || data.Email || 'Unknown'
+                    };
+                });
+
+                // Process customers
+                for (const doc of customerSnapshot.docs) {
+                    const data = doc.data();
+                    const customerId = doc.id;
+
+                    // Get orders for this customer
+                    const ordersSnapshot = await db.collection('orders')
+                        .where('UserId', '==', customerId)
+                        .get();
+
+                    // Get affiliate info
+                    let affiliateName = 'None';
+                    let affiliateId = '';
+
+                    if (data.ReferenceId && affiliates[data.ReferenceId]) {
+                        affiliateName = affiliates[data.ReferenceId].name;
+                        affiliateId = data.ReferenceId;
+                    }
+
+                    customers.push({
+                        id: customerId,
+                        name: `${data.FirstName || ''} ${data.LastName || ''}`.trim(),
+                        email: data.Email || '',
+                        phone: data.PhoneNumber || '',
+                        orderCount: ordersSnapshot.size,
+                        affiliateId: affiliateId,
+                        affiliateName: affiliateName,
+                        status: data.Status || 'Active',
+                        data: data
+                    });
+                }
+
+                // Render table
+                tableBody.innerHTML = '';
+
+                customers.forEach(customer => {
+                    const row = document.createElement('tr');
+
+                    // Create status badge
+                    let statusBadgeClass = 'bg-label-success';
+                    if (customer.status === 'Pending') statusBadgeClass = 'bg-label-warning';
+                    if (customer.status === 'Suspended') statusBadgeClass = 'bg-label-danger';
+
+                    row.innerHTML = `
+                        <td>
+                            <div class="d-flex justify-content-start align-items-center">
+                                <div class="avatar-wrapper">
+                                    <div class="avatar avatar-sm me-2">
+                                        <span class="avatar-initial rounded-circle bg-label-info">
+                                            ${customer.name.charAt(0).toUpperCase()}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-column">
+                                    <a href="/Admin/CustomerDetails/${customer.id}" class="text-body text-truncate fw-semibold">
+                                        ${customer.name}
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${customer.email}</td>
+                        <td>${customer.phone}</td>
+                        <td>${customer.orderCount}</td>
+                        <td>
+                            ${customer.affiliateId ?
+                                `<a href="/Admin/AffiliateDetails/${customer.affiliateId}">${customer.affiliateName}</a>` :
+                                'None'}
+                        </td>
+                        <td><span class="badge ${statusBadgeClass}">${customer.status}</span></td>
+                        <td>
+                            <div class="dropdown">
+                                <button type="button" class="btn btn-sm dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
+                                    <i class="ti ti-dots-vertical"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" href="/Admin/CustomerDetails/${customer.id}">
+                                        <i class="ti ti-eye me-1"></i> View Details
+                                    </a>
+                                    <button class="dropdown-item edit-customer" data-id="${customer.id}">
+                                        <i class="ti ti-edit me-1"></i> Edit
+                                    </button>
+                                    <button class="dropdown-item text-danger delete-customer" data-id="${customer.id}">
+                                        <i class="ti ti-trash me-1"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
+                    `;
+
+                    tableBody.appendChild(row);
+
+                    // Add event listener for edit button
+                    const editBtn = row.querySelector('.edit-customer');
+                    editBtn.addEventListener('click', () => editCustomer(db, customer));
+
+                    // Add event listener for delete button
+                    const deleteBtn = row.querySelector('.delete-customer');
+                    deleteBtn.addEventListener('click', () => deleteCustomer(db, customer.id, customer.name));
+                });
+
+                // Initialize DataTable
+                if ($.fn.DataTable) {
+                    // Destroy existing DataTable instance if it exists
+                    if ($.fn.DataTable.isDataTable('#customersTable')) {
+                        $('#customersTable').DataTable().destroy();
+                    }
+
+                    $('#customersTable').DataTable({
+                        responsive: true,
+                        pageLength: 10,
+                        language: {
+                            search: '',
+                            searchPlaceholder: 'Search customers'
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading customers:', error);
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error loading customer data</td></tr>';
+            }
+        }
+
+        function editCustomer(db, customer) {
+            document.getElementById('modalTitle').textContent = 'Edit Customer';
+            document.getElementById('customerId').value = customer.id;
+            document.getElementById('firstName').value = customer.data.FirstName || '';
+            document.getElementById('lastName').value = customer.data.LastName || '';
+            document.getElementById('email').value = customer.data.Email || '';
+            document.getElementById('phoneNumber').value = customer.data.PhoneNumber || '';
+            document.getElementById('status').value = customer.status;
+            document.getElementById('affiliateId').value = customer.data.ReferenceId || '';
+
+            // Password is not required for editing
+            document.getElementById('password').required = false;
+
+            // Show modal
+            new bootstrap.Modal(document.getElementById('customerModal')).show();
+        }
+
+        async function saveCustomer(db) {
+            try {
+                const customerId = document.getElementById('customerId').value;
+                const firstName = document.getElementById('firstName').value;
+                const lastName = document.getElementById('lastName').value;
+                const email = document.getElementById('email').value;
+                const phoneNumber = document.getElementById('phoneNumber').value;
+                const status = document.getElementById('status').value;
+                const password = document.getElementById('password').value;
+                const affiliateId = document.getElementById('affiliateId').value;
+
+                if (!firstName || !lastName || !email) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Error',
+                            text: 'Please fill in all required fields',
+                            icon: 'error'
+                        });
+                    } else {
+                        alert('Please fill in all required fields');
+                    }
+                    return;
+                }
+
+                // Show loading
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Saving...',
+                        didOpen: () => {
+                            Swal.showLoading();
+                        },
+                        allowOutsideClick: false
+                    });
+                }
+
+                if (customerId) {
+                    // Update existing customer
+                    const customerRef = db.collection('users').doc(customerId);
+
+                    const updateData = {
+                        FirstName: firstName,
+                        LastName: lastName,
+                        Email: email,
+                        PhoneNumber: phoneNumber,
+                        Status: status,
+                        ReferenceId: affiliateId || null,
+                        UpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+
+                    // Update password only if provided
+                    if (password) {
+                        // In a real app, you would hash the password here
+                        updateData.Password = password;
+                    }
+
+                    await customerRef.update(updateData);
+
+                    // Close the modal first
+                    bootstrap.Modal.getInstance(document.getElementById('customerModal')).hide();
+
+                    // Clear the table immediately
+                    const tableBody = document.querySelector('#customersTable tbody');
+                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center">Reloading customers...</td></tr>';
+
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Success',
+                            text: 'Customer updated successfully',
+                            icon: 'success'
+                        });
+                    } else {
+                        alert('Customer updated successfully');
+                    }
+
+                    // Reload customers table with a slight delay
+                    setTimeout(() => loadCustomers(db), 100);
+                } else {
+                    // Create new customer
+                    if (!password) {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                title: 'Error',
+                                text: 'Password is required for new customers',
+                                icon: 'error'
+                            });
+                        } else {
+                            alert('Password is required for new customers');
+                        }
+                        return;
+                    }
+
+                    const newCustomerData = {
+                        FirstName: firstName,
+                        LastName: lastName,
+                        Email: email,
+                        PhoneNumber: phoneNumber,
+                        Role: '3', // Role 3 for customers
+                        Status: status,
+                        Password: password, // In a real app, you would hash the password
+                        ReferenceId: affiliateId || null,
+                        CreatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        UpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+
+                    await db.collection('users').add(newCustomerData);
+
+                    // Close the modal first
+                    bootstrap.Modal.getInstance(document.getElementById('customerModal')).hide();
+
+                    // Clear the table immediately
+                    const tableBody = document.querySelector('#customersTable tbody');
+                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center">Reloading customers...</td></tr>';
+
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Success',
+                            text: 'Customer created successfully',
+                            icon: 'success'
+                        });
+                    } else {
+                        alert('Customer created successfully');
+                    }
+
+                    // Reload customers table with a slight delay
+                    setTimeout(() => loadCustomers(db), 100);
+                }
+            } catch (error) {
+                console.error('Error saving customer:', error);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Failed to save customer. Please try again.',
+                        icon: 'error'
+                    });
+                } else {
+                    alert('Failed to save customer. Please try again.');
+                }
+            }
+        }
+
+        async function deleteCustomer(db, customerId, customerName) {
+            try {
+                if (typeof Swal === 'undefined') {
+                    if (confirm(`Do you want to delete customer ${customerName}?`)) {
+                        await db.collection('users').doc(customerId).delete();
+                        alert('Customer has been deleted');
+
+                        // Clear the table immediately
+                        const tableBody = document.querySelector('#customersTable tbody');
+                        tableBody.innerHTML = '<tr><td colspan="7" class="text-center">Reloading customers...</td></tr>';
+
+                        // Reload with a slight delay
+                        setTimeout(() => loadCustomers(db), 100);
+                    }
+                    return;
+                }
+
+                const result = await Swal.fire({
+                    title: 'Are you sure?',
+                    text: `Do you want to delete customer ${customerName}?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, delete it',
+                    cancelButtonText: 'No, cancel'
+                });
+
+                if (result.isConfirmed) {
+                    // Check for associated orders
+                    const ordersSnapshot = await db.collection('orders')
+                        .where('UserId', '==', customerId)
+                        .get();
+
+                    if (!ordersSnapshot.empty) {
+                        // Ask for confirmation if there are associated orders
+                        const confirmDelete = await Swal.fire({
+                            title: 'Warning',
+                            text: `This customer has ${ordersSnapshot.size} orders. Deleting the customer will affect order history. Do you want to proceed?`,
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Yes, delete anyway',
+                            cancelButtonText: 'No, cancel'
+                        });
+
+                        if (!confirmDelete.isConfirmed) {
+                            return;
+                        }
+                    }
+
+                    // Delete customer
+                    await db.collection('users').doc(customerId).delete();
+
+                    // Clear the table immediately
+                    const tableBody = document.querySelector('#customersTable tbody');
+                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center">Reloading customers...</td></tr>';
+
+                    Swal.fire({
+                        title: 'Deleted!',
+                        text: 'Customer has been deleted.',
+                        icon: 'success'
+                    });
+
+                    // Reload customers table with a slight delay
+                    setTimeout(() => loadCustomers(db), 100);
+                }
+            } catch (error) {
+                console.error('Error deleting customer:', error);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Failed to delete customer. Please try again.',
+                        icon: 'error'
+                    });
+                } else {
+                    alert('Failed to delete customer. Please try again.');
+                }
+            }
+        }
+    </script>
+}

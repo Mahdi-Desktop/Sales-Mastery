@@ -1,0 +1,863 @@
+@{
+    ViewData["Title"] = "Admin Commissions";
+    Layout = "_ContentNavbarLayout";
+}
+
+@section VendorStyles {
+    <link rel="stylesheet" href="~/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/daterangepicker/daterangepicker.css" />
+}
+
+<div class="container-xxl flex-grow-1 container-p-y">
+@*     <h4 class="fw-bold py-3 mb-4">
+        <span class="text-muted fw-light">Admin /</span> Commissions
+    </h4> *@
+
+    <!-- Commissions List Card -->
+    <div class="card">
+        <div class="card-header border-bottom">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="card-title mb-3">Commission Management</h5>
+                </div>
+                <div class="col-md-6 text-end">
+                    <button type="button" class="btn btn-primary" id="markPaidBtn">
+                        <i class="ti ti-check me-1"></i>Mark Selected as Paid
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="exportCommissionsBtn">
+                        <i class="ti ti-file-export me-1"></i>Export
+                    </button>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div class="d-flex align-items-center">
+                    <div id="reportrange" class="btn border text-muted dropdown-toggle p-2">
+                        <i class="ti ti-calendar me-1"></i>
+                        <span>Date Range</span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="me-2">
+                        <select class="form-select" id="statusFilter">
+                            <option value="all">All Status</option>
+                            <option value="paid">Paid</option>
+                            <option value="pending">Pending</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select class="form-select" id="affiliateFilter">
+                            <option value="all">All Affiliates</option>
+                            <!-- Affiliates will be populated by JavaScript -->
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-datatable table-responsive">
+            <table class="datatables-commissions table border-top" id="commissionsTable">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="form-check-input" id="selectAll"></th>
+                        <th>ID</th>
+                        <th>Affiliate</th>
+                        <th>Order</th>
+                        <th>Customer</th>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data will be populated with JavaScript -->
+                    <tr>
+                        <td colspan="9" class="text-center">Loading commissions...</td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="6" class="text-end">Total:</th>
+                        <th id="totalAmount">$0.00</th>
+                        <th colspan="2"></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Commission Details Modal -->
+    <div class="modal fade" id="commissionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Commission Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="mb-3 row">
+                                <label class="col-md-3 col-form-label">Commission ID</label>
+                                <div class="col-md-9">
+                                    <p class="form-control-static mb-0" id="commissionId">-</p>
+                                </div>
+                            </div>
+                            <div class="mb-3 row">
+                                <label class="col-md-3 col-form-label">Affiliate</label>
+                                <div class="col-md-9">
+                                    <p class="form-control-static mb-0" id="affiliateName">-</p>
+                                </div>
+                            </div>
+                            <div class="mb-3 row">
+                                <label class="col-md-3 col-form-label">Order ID</label>
+                                <div class="col-md-9">
+                                    <p class="form-control-static mb-0" id="orderIdDetail">-</p>
+                                </div>
+                            </div>
+                            <div class="mb-3 row">
+                                <label class="col-md-3 col-form-label">Customer</label>
+                                <div class="col-md-9">
+                                    <p class="form-control-static mb-0" id="customerName">-</p>
+                                </div>
+                            </div>
+                            <div class="mb-3 row">
+                                <label class="col-md-3 col-form-label">Date</label>
+                                <div class="col-md-9">
+                                    <p class="form-control-static mb-0" id="commissionDate">-</p>
+                                </div>
+                            </div>
+                            <div class="mb-3 row">
+                                <label class="col-md-3 col-form-label">Amount</label>
+                                <div class="col-md-9">
+                                    <p class="form-control-static mb-0" id="commissionAmount">-</p>
+                                </div>
+                            </div>
+                            <div class="mb-3 row">
+                                <label class="col-md-3 col-form-label">Status</label>
+                                <div class="col-md-9">
+                                    <p class="form-control-static mb-0" id="commissionStatus">-</p>
+                                </div>
+                            </div>
+                            <div class="mb-3 row" id="paidDateRow">
+                                <label class="col-md-3 col-form-label">Paid Date</label>
+                                <div class="col-md-9">
+                                    <p class="form-control-static mb-0" id="paidDate">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="updateStatusBtn">Update Status</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Firebase Scripts -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+@section VendorScripts {
+    <script src="~/vendor/libs/moment/moment.js"></script>
+    <script src="~/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+    <script src="~/vendor/libs/daterangepicker/daterangepicker.js"></script>
+}
+
+<!-- Initialize Firebase -->
+<script>
+    // Pass Firebase configuration from server to client
+    window.firebaseConfig = {
+        apiKey: "@ViewBag.FirebaseApiKey",
+        authDomain: "@ViewBag.FirebaseProjectId" + ".firebaseapp.com",
+        projectId: "@ViewBag.FirebaseProjectId",
+        storageBucket: "@ViewBag.FirebaseStorageBucket",
+        messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+        appId: "@ViewBag.FirebaseAppId"
+    };
+
+    // Set user context for access control
+    window.userContext = {
+        userId: "@ViewBag.UserId",
+        isAdmin: @(ViewBag.IsAdmin == "1" ? "true" : "false"),
+        isAffiliate: @(ViewBag.IsAffiliate == "1" ? "true" : "false"),
+        isCustomer: @(ViewBag.IsCustomer == "1" ? "true" : "false")
+    };
+</script>
+
+<script>
+    let db;
+    let dataTable;
+    let commissions = [];
+    let startDate;
+    let endDate;
+    let affiliates = {};
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize Firebase
+        if (typeof firebase === 'undefined') {
+            console.error('Firebase SDK not loaded');
+            return;
+        }
+
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(window.firebaseConfig);
+            }
+            db = firebase.firestore();
+
+            // Initialize date range picker
+            initializeDateRangePicker();
+
+            // Load affiliates for filter dropdown
+            loadAffiliates();
+
+            // Set default date range (last 30 days)
+            const today = new Date();
+            startDate = new Date(today);
+            startDate.setDate(today.getDate() - 30);
+            endDate = today;
+
+            // Load commissions data
+            loadCommissions(startDate, endDate);
+
+            // Set up event listeners
+            setupEventListeners();
+        } catch (error) {
+            console.error('Error initializing Firebase:', error);
+            Swal.fire({
+                title: 'Error',
+                text: 'Failed to connect to database. Please try again later.',
+                icon: 'error'
+            });
+        }
+    });
+
+    function initializeDateRangePicker() {
+        if (typeof moment === 'undefined' || typeof $.fn.daterangepicker === 'undefined') {
+            console.warn('Date range picker libraries not loaded');
+            return;
+        }
+
+        const reportrange = document.getElementById('reportrange');
+        if (!reportrange) return;
+
+        const start = moment().subtract(29, 'days');
+        const end = moment();
+
+        function cb(start, end) {
+            reportrange.querySelector('span').innerHTML = start.format('MMM D, YYYY') + ' - ' + end.format('MMM D, YYYY');
+            startDate = start.toDate();
+            endDate = end.toDate();
+            loadCommissions(startDate, endDate);
+        }
+
+        try {
+            $(reportrange).daterangepicker(
+                {
+                    startDate: start,
+                    endDate: end,
+                    ranges: {
+                        'Today': [moment(), moment()],
+                        'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                        'Last 7 Days': [moment().subtract(6, 'days'), moment()],
+                        'Last 30 Days': [moment().subtract(29, 'days'), moment()],
+                        'This Month': [moment().startOf('month'), moment().endOf('month')],
+                        'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+                    }
+                },
+                cb
+            );
+
+            cb(start, end);
+        } catch (error) {
+            console.error('Error initializing daterangepicker:', error);
+        }
+    }
+
+    function setupEventListeners() {
+        // Status filter change
+        document.getElementById('statusFilter').addEventListener('change', function() {
+            filterCommissions();
+        });
+
+        // Affiliate filter change
+        document.getElementById('affiliateFilter').addEventListener('change', function() {
+            filterCommissions();
+        });
+
+        // Select all checkbox
+        document.getElementById('selectAll').addEventListener('change', function() {
+            const isChecked = this.checked;
+            const checkboxes = document.querySelectorAll('.commission-checkbox');
+
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+        });
+
+        // Mark paid button
+        document.getElementById('markPaidBtn').addEventListener('click', function() {
+            markSelectedAsPaid();
+        });
+
+        // Export button
+        document.getElementById('exportCommissionsBtn').addEventListener('click', function() {
+            exportCommissions();
+        });
+
+        // Update status button in modal
+        document.getElementById('updateStatusBtn').addEventListener('click', function() {
+            const commissionId = document.getElementById('commissionId').textContent;
+            toggleCommissionStatus(commissionId);
+        });
+    }
+
+    async function loadAffiliates() {
+        try {
+            const affiliateSelect = document.getElementById('affiliateFilter');
+
+            // Get all affiliates (users with role = 2)
+            const affiliateSnapshot = await db.collection('users')
+                .where('Role', '==', '2')  // Role 2 for affiliates
+                .get();
+
+            // Add options to select
+            affiliateSnapshot.forEach(doc => {
+                const data = doc.data();
+                const name = `${data.FirstName || ''} ${data.LastName || ''}`.trim() || data.Email || 'Unknown';
+
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = name;
+                affiliateSelect.appendChild(option);
+
+                // Store affiliate info for later use
+                affiliates[doc.id] = {
+                    name: name,
+                    email: data.Email
+                };
+            });
+        } catch (error) {
+            console.error('Error loading affiliates:', error);
+        }
+    }
+
+    async function loadCommissions(start, end) {
+        try {
+            const tableBody = document.querySelector('#commissionsTable tbody');
+            tableBody.innerHTML = '<tr><td colspan="9" class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div> Loading commissions...</td></tr>';
+
+            // Convert dates to timestamps for Firestore query
+            const startTimestamp = firebase.firestore.Timestamp.fromDate(start);
+            const endTimestamp = firebase.firestore.Timestamp.fromDate(end);
+
+            // Query commissions collection - note the fixed collection name (commissions, not commisiond)
+            const commissionsCollection = "commissions";
+
+            try {
+                const commissionsSnapshot = await db.collection(commissionsCollection)
+                    .where('CreatedAt', '>=', startTimestamp)
+                    .where('CreatedAt', '<=', endTimestamp)
+                    .get();
+
+                // If query succeeded, we're using the right collection name
+                processCommissions(commissionsSnapshot);
+            } catch (error) {
+                // Try with "commisiond" (the typo name mentioned by user)
+                console.warn('Error with "commissions" collection, trying "commisiond":', error);
+
+                const commisiondsSnapshot = await db.collection('commisiond')
+                    .where('CreatedAt', '>=', startTimestamp)
+                    .where('CreatedAt', '<=', endTimestamp)
+                    .get();
+
+                processCommissions(commisiondsSnapshot);
+            }
+        } catch (error) {
+            console.error('Error loading commissions:', error);
+            const tableBody = document.querySelector('#commissionsTable tbody');
+            tableBody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Error loading commissions data</td></tr>';
+        }
+    }
+
+    async function processCommissions(snapshot) {
+        const tableBody = document.querySelector('#commissionsTable tbody');
+
+        if (snapshot.empty) {
+            tableBody.innerHTML = '<tr><td colspan="9" class="text-center">No commissions found for the selected period</td></tr>';
+            return;
+        }
+
+        // Clear previous data
+        commissions = [];
+        tableBody.innerHTML = '';
+
+        // Process each commission
+        for (const doc of snapshot.docs) {
+            const commission = doc.data();
+            const commissionId = doc.id;
+
+            // Get affiliate info
+            let affiliateName = 'Unknown Affiliate';
+            const affiliateId = commission.AffiliateId;
+
+            if (affiliateId && affiliates[affiliateId]) {
+                affiliateName = affiliates[affiliateId].name;
+            } else if (affiliateId) {
+                try {
+                    const affiliateDoc = await db.collection('users').doc(affiliateId).get();
+                    if (affiliateDoc.exists) {
+                        const data = affiliateDoc.data();
+                        affiliateName = `${data.FirstName || ''} ${data.LastName || ''}`.trim() || data.Email || 'Unknown';
+
+                        // Cache for future use
+                        affiliates[affiliateId] = {
+                            name: affiliateName,
+                            email: data.Email
+                        };
+                    }
+                } catch (error) {
+                    console.error(`Error fetching affiliate ${affiliateId}:`, error);
+                }
+            }
+
+            // Get customer info
+            let customerName = 'Unknown Customer';
+            const customerId = commission.CustomerId;
+
+            if (customerId) {
+                try {
+                    const customerDoc = await db.collection('users').doc(customerId).get();
+                    if (customerDoc.exists) {
+                        const data = customerDoc.data();
+                        customerName = `${data.FirstName || ''} ${data.LastName || ''}`.trim() || data.Email || 'Unknown';
+                    }
+                } catch (error) {
+                    console.error(`Error fetching customer ${customerId}:`, error);
+                }
+            }
+
+            // Format commission data
+            const commissionData = {
+                id: commissionId,
+                affiliateId: affiliateId,
+                affiliateName: affiliateName,
+                orderId: commission.OrderId || 'N/A',
+                customerId: customerId,
+                customerName: customerName,
+                createdAt: commission.CreatedAt ? commission.CreatedAt.toDate() : new Date(),
+                amount: parseFloat(commission.Amount || 0),
+                isPaid: commission.IsPaid || commission.Paid || false,
+                paidDate: commission.PaidAt || commission.PaidDate ? (commission.PaidAt || commission.PaidDate).toDate() : null,
+                status: commission.Status || (commission.IsPaid || commission.Paid ? 'Paid' : 'Pending')
+            };
+
+            commissions.push(commissionData);
+
+            // Create row
+            const row = document.createElement('tr');
+
+            // Format date
+            const formattedDate = formatDate(commissionData.createdAt);
+
+            // Status badge
+            const isPaid = commissionData.isPaid;
+            const statusBadgeClass = isPaid ? 'bg-label-success' : 'bg-label-warning';
+            const statusText = isPaid ? 'Paid' : 'Pending';
+
+            row.innerHTML = `
+                <td><input type="checkbox" class="form-check-input commission-checkbox" value="${commissionId}" ${isPaid ? 'disabled' : ''}></td>
+                <td>${commissionId.substring(0, 8)}</td>
+                <td>
+                    <div class="d-flex justify-content-start align-items-center">
+                        <div class="avatar avatar-sm me-2">
+                            <span class="avatar-initial rounded-circle bg-label-primary">
+                                ${affiliateName.charAt(0).toUpperCase()}
+                            </span>
+                        </div>
+                        <div class="d-flex flex-column">
+                            <a href="/Admin/AffiliateDetails/${affiliateId}" class="text-body text-truncate fw-semibold">
+                                ${affiliateName}
+                            </a>
+                        </div>
+                    </div>
+                </td>
+                <td><a href="/Admin/OrderDetails/${commissionData.orderId}" class="fw-semibold">${commissionData.orderId}</a></td>
+                <td>${customerName}</td>
+                <td>${formattedDate}</td>
+                <td>$${commissionData.amount.toFixed(2)}</td>
+                <td><span class="badge ${statusBadgeClass}">${statusText}</span></td>
+                <td>
+                    <div class="dropdown">
+                        <button type="button" class="btn btn-sm dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
+                            <i class="ti ti-dots-vertical"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <button class="dropdown-item view-commission" data-id="${commissionId}">
+                                <i class="ti ti-eye me-1"></i> View Details
+                            </button>
+                            <button class="dropdown-item ${isPaid ? 'mark-unpaid' : 'mark-paid'}" data-id="${commissionId}">
+                                <i class="ti ${isPaid ? 'ti-x' : 'ti-check'} me-1"></i> ${isPaid ? 'Mark as Unpaid' : 'Mark as Paid'}
+                            </button>
+                        </div>
+                    </div>
+                </td>
+            `;
+
+            tableBody.appendChild(row);
+
+            // Add event listeners
+            row.querySelector('.view-commission').addEventListener('click', function() {
+                showCommissionDetails(commissionId);
+            });
+
+            const statusToggleBtn = row.querySelector(isPaid ? '.mark-unpaid' : '.mark-paid');
+            if (statusToggleBtn) {
+                statusToggleBtn.addEventListener('click', function() {
+                    toggleCommissionStatus(commissionId);
+                });
+            }
+        }
+
+        // Calculate total
+        const total = commissions.reduce((sum, commission) => sum + commission.amount, 0);
+        document.getElementById('totalAmount').textContent = `$${total.toFixed(2)}`;
+
+        // Initialize DataTable
+        if ($.fn.DataTable) {
+            if (dataTable) {
+                dataTable.destroy();
+            }
+
+            dataTable = $('#commissionsTable').DataTable({
+                responsive: true,
+                pageLength: 10,
+                language: {
+                    search: '',
+                    searchPlaceholder: 'Search commissions'
+                }
+            });
+        }
+    }
+
+    function filterCommissions() {
+        if (!dataTable) return;
+
+        const statusFilter = document.getElementById('statusFilter').value;
+        const affiliateFilter = document.getElementById('affiliateFilter').value;
+
+        // Clear existing filter
+        dataTable.search('').columns().search('').draw();
+
+        // Apply status filter
+        if (statusFilter !== 'all') {
+            dataTable.column(7).search(statusFilter === 'paid' ? 'Paid' : 'Pending').draw();
+        }
+
+        // Apply affiliate filter
+        if (affiliateFilter !== 'all') {
+            const affiliateName = affiliates[affiliateFilter]?.name || '';
+            if (affiliateName) {
+                dataTable.column(2).search(affiliateName).draw();
+            }
+        }
+    }
+
+    function showCommissionDetails(commissionId) {
+        const commission = commissions.find(c => c.id === commissionId);
+        if (!commission) return;
+
+        document.getElementById('commissionId').textContent = commission.id;
+        document.getElementById('affiliateName').textContent = commission.affiliateName;
+        document.getElementById('orderIdDetail').textContent = commission.orderId;
+        document.getElementById('orderIdDetail').href = `/Admin/OrderDetails/${commission.orderId}`;
+        document.getElementById('customerName').textContent = commission.customerName;
+        document.getElementById('commissionDate').textContent = formatDate(commission.createdAt);
+        document.getElementById('commissionAmount').textContent = `$${commission.amount.toFixed(2)}`;
+
+        const statusElem = document.getElementById('commissionStatus');
+        statusElem.textContent = commission.isPaid ? 'Paid' : 'Pending';
+        statusElem.className = commission.isPaid ? 'badge bg-label-success' : 'badge bg-label-warning';
+
+        const paidDateRow = document.getElementById('paidDateRow');
+        const paidDateElem = document.getElementById('paidDate');
+
+        if (commission.isPaid && commission.paidDate) {
+            paidDateRow.style.display = 'flex';
+            paidDateElem.textContent = formatDate(commission.paidDate);
+        } else {
+            paidDateRow.style.display = 'none';
+        }
+
+        document.getElementById('updateStatusBtn').textContent = commission.isPaid ? 'Mark as Unpaid' : 'Mark as Paid';
+
+        const modal = new bootstrap.Modal(document.getElementById('commissionModal'));
+        modal.show();
+    }
+
+    async function toggleCommissionStatus(commissionId) {
+        try {
+            const commission = commissions.find(c => c.id === commissionId);
+            if (!commission) return;
+
+            const newStatus = !commission.isPaid;
+
+            // Show loading
+            Swal.fire({
+                title: 'Updating...',
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+                allowOutsideClick: false
+            });
+
+            // Try to update in 'commissions' collection
+            let updated = false;
+            try {
+                await db.collection('commissions').doc(commissionId).update({
+                    IsPaid: newStatus,
+                    Paid: newStatus,  // Update both fields to be safe
+                    PaidAt: newStatus ? firebase.firestore.FieldValue.serverTimestamp() : null,
+                    PaidDate: newStatus ? firebase.firestore.FieldValue.serverTimestamp() : null,
+                    Status: newStatus ? 'Paid' : 'Pending'
+                });
+                updated = true;
+            } catch (err) {
+                console.warn('Error updating in commissions collection:', err);
+            }
+
+            // If that failed, try the 'commisiond' collection
+            if (!updated) {
+                await db.collection('commisiond').doc(commissionId).update({
+                    IsPaid: newStatus,
+                    Paid: newStatus,  // Update both fields to be safe
+                    PaidAt: newStatus ? firebase.firestore.FieldValue.serverTimestamp() : null,
+                    PaidDate: newStatus ? firebase.firestore.FieldValue.serverTimestamp() : null,
+                    Status: newStatus ? 'Paid' : 'Pending'
+                });
+            }
+
+            Swal.fire({
+                title: 'Success',
+                text: `Commission marked as ${newStatus ? 'paid' : 'unpaid'}`,
+                icon: 'success',
+                timer: 1500
+            });
+
+            // Close modal if open
+            const modal = bootstrap.Modal.getInstance(document.getElementById('commissionModal'));
+            if (modal) {
+                modal.hide();
+            }
+
+            // Reload data
+            loadCommissions(startDate, endDate);
+
+        } catch (error) {
+            console.error('Error toggling commission status:', error);
+            Swal.fire({
+                title: 'Error',
+                text: 'Failed to update commission status',
+                icon: 'error'
+            });
+        }
+    }
+
+    async function markSelectedAsPaid() {
+        const checkboxes = document.querySelectorAll('.commission-checkbox:checked');
+        if (checkboxes.length === 0) {
+            Swal.fire({
+                title: 'No Selections',
+                text: 'Please select at least one commission to mark as paid',
+                icon: 'info'
+            });
+            return;
+        }
+
+        try {
+            const result = await Swal.fire({
+                title: 'Confirmation',
+                text: `Mark ${checkboxes.length} commission(s) as paid?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, mark as paid',
+                cancelButtonText: 'Cancel'
+            });
+
+            if (!result.isConfirmed) return;
+
+            // Show loading
+            Swal.fire({
+                title: 'Processing...',
+                text: 'Updating commission statuses',
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+                allowOutsideClick: false
+            });
+
+            const timestamp = firebase.firestore.FieldValue.serverTimestamp();
+            const batch = db.batch();
+
+            // Keep track of where the document exists
+            const collectionNames = {};
+
+            // Check each commission and determine which collection it belongs to
+            for (const checkbox of checkboxes) {
+                const commissionId = checkbox.value;
+
+                // Try to get from 'commissions' first
+                try {
+                    const docRef = db.collection('commissions').doc(commissionId);
+                    const doc = await docRef.get();
+
+                    if (doc.exists) {
+                        batch.update(docRef, {
+                            IsPaid: true,
+                            Paid: true,
+                            PaidAt: timestamp,
+                            PaidDate: timestamp,
+                            Status: 'Paid'
+                        });
+                        collectionNames[commissionId] = 'commissions';
+                        continue;
+                    }
+                } catch (err) {
+                    console.warn('Error checking commissions collection:', err);
+                }
+
+                // If not found, try 'commisiond'
+                const docRef = db.collection('commisiond').doc(commissionId);
+                batch.update(docRef, {
+                    IsPaid: true,
+                    Paid: true,
+                    PaidAt: timestamp,
+                    PaidDate: timestamp,
+                    Status: 'Paid'
+                });
+                collectionNames[commissionId] = 'commisiond';
+            }
+
+            // Commit the batch
+            await batch.commit();
+
+            Swal.fire({
+                title: 'Success',
+                text: `${checkboxes.length} commission(s) marked as paid`,
+                icon: 'success'
+            });
+
+            // Reload data
+            loadCommissions(startDate, endDate);
+
+        } catch (error) {
+            console.error('Error marking commissions as paid:', error);
+            Swal.fire({
+                title: 'Error',
+                text: 'Failed to update commission statuses',
+                icon: 'error'
+            });
+        }
+    }
+
+    function exportCommissions() {
+        try {
+            // Filter visible commissions (respect filters)
+            let dataToExport = [];
+
+            if (dataTable) {
+                // Get currently displayed data from DataTable
+                const displayData = dataTable.rows({ search: 'applied' }).data();
+
+                // Extract commission IDs from displayed rows
+                const displayedIds = [];
+                displayData.each(function(row) {
+                    // The ID is in the second column (index 1)
+                    const id = row[1].substring(0, 8);
+                    displayedIds.push(id);
+                });
+
+                // Match with full commission data
+                dataToExport = commissions.filter(c => displayedIds.includes(c.id.substring(0, 8)));
+            } else {
+                dataToExport = commissions;
+            }
+
+            if (dataToExport.length === 0) {
+                Swal.fire({
+                    title: 'No Data',
+                    text: 'No commission data to export',
+                    icon: 'info'
+                });
+                return;
+            }
+
+            // Create CSV content
+            let csvContent = 'data:text/csv;charset=utf-8,';
+
+            // Add headers
+            csvContent += 'Commission ID,Affiliate,Order ID,Customer,Date,Amount,Status,Paid Date\n';
+
+            // Add rows
+            dataToExport.forEach(commission => {
+                const row = [
+                    commission.id,
+                    commission.affiliateName,
+                    commission.orderId,
+                    commission.customerName,
+                    formatDate(commission.createdAt),
+                    commission.amount.toFixed(2),
+                    commission.isPaid ? 'Paid' : 'Pending',
+                    commission.paidDate ? formatDate(commission.paidDate) : ''
+                ];
+
+                csvContent += row.join(',') + '\n';
+            });
+
+            // Create download link
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `commissions_export_${formatDateFileName(new Date())}.csv`);
+            document.body.appendChild(link);
+
+            // Trigger download
+            link.click();
+
+            // Clean up
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Error exporting commissions:', error);
+            Swal.fire({
+                title: 'Error',
+                text: 'Failed to export commissions data',
+                icon: 'error'
+            });
+        }
+    }
+
+    // Utility function to format date
+    function formatDate(date) {
+        if (!date) return 'N/A';
+
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return date.toLocaleDateString(undefined, options);
+    }
+
+    // Utility function to format date for filenames
+    function formatDateFileName(date) {
+        if (!date) return 'export';
+
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+
+        return `${year}-${month}-${day}`;
+    }
+</script>

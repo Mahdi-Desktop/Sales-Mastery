@@ -9,11 +9,11 @@
 {
    <div class="navbar-brand app-brand demo d-none d-xl-flex py-0 me-4">
   <a asp-controller="Dashboards" asp-action="Index" class="app-brand-link">
-    <span class="app-brand-logo demo">
+      <span class="app-brand-logo demo">
       @await Html.PartialAsync("../_Partials/_Macros")
       </span>
       <span class="app-brand-text demo menu-text fw-bold">@TempData.Peek("appName")</span>
-    </a> 
+    </a>
 
     @* ! Display menu close icon only for horizontal-menu with navbar-full *@
      @if (Convert.ToBoolean(@TempData.Peek("menuHorizontal")).ToString() == "True")
@@ -21,7 +21,7 @@
       <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto d-xl-none">
         <i class="ti ti-x ti-md align-middle"></i>
       </a>
-    } 
+    }
   </div>
 }
 
@@ -34,7 +34,7 @@
     <i class="ti ti-menu-2 ti-md"></i>
   </a>
   </div>
-} 
+}
 
 <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
 
@@ -121,7 +121,10 @@
     <li class="nav-item navbar-dropdown dropdown-user dropdown">
       <a class="nav-link dropdown-toggle hide-arrow p-0" href="javascript:void(0);" data-bs-toggle="dropdown">
         <div class="avatar avatar-online">
-           <img src="~/img/avatars/11.png" alt class="rounded-circle">
+          <!-- Replace image with icon -->
+          <span class="avatar-initial rounded-circle bg-label-secondary">
+            <i class="ti ti-user ti-sm"></i>
+          </span>
         </div>
       </a>
       <ul class="dropdown-menu dropdown-menu-end">
@@ -130,7 +133,10 @@
               <div class="d-flex align-items-center">
                   <div class="flex-shrink-0 me-2">
                       <div class="avatar avatar-online">
-                          <img src="~/img/avatars/1.png" alt class="rounded-circle">
+                          <!-- Replace image with icon -->
+                          <span class="avatar-initial rounded-circle bg-label-secondary">
+                            <i class="ti ti-user ti-sm"></i>
+                          </span>
                       </div>
                   </div>
                   <div class="flex-grow-1">
@@ -153,11 +159,11 @@
           </div>
       </li>
       </ul>
-    </li> 
+    </li>
     <!--/ User -->
 
   </ul>
-</div> 
+</div>
 
 <!-- Search Small Screens -->
 <div
@@ -185,17 +191,17 @@
         setTimeout(() => fetchUserData(userId), 500);
         return;
       }
-      
+
       const db = firebase.firestore();
       const userDoc = await db.collection('users').doc(userId).get();
-      
+
       if (userDoc.exists) {
         const userData = userDoc.data();
-        
+
         // Update user name
         const userName = `${userData.FirstName || ''} ${userData.LastName || ''}`.trim();
         document.getElementById('navbar-user-name').textContent = userName || 'User';
-        
+
         // Update user role
         let roleText = 'User';
         switch(userData.Role) {
@@ -210,7 +216,7 @@
             break;
         }
         document.getElementById('navbar-user-role').textContent = roleText;
-        
+
         // You could also update the avatar here if you have user profile images
       } else {
         console.log('No user found with ID:', userId);

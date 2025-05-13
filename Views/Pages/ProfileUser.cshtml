@@ -1,129 +1,271 @@
-<script src="~/vendor/libs/formvalidation/AutoFocus.min.js"></script>
+@{
+  ViewData["Title"] = "User Profile";
+}
+
+@section PageStyles {
+  <style>
+    #loading-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 2rem 0;
+    }
+
+    .profile-card {
+      transition: all 0.3s ease;
+    }
+
+    .profile-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .user-avatar {
+      width: 110px;
+      height: 110px;
+      object-fit: cover;
+    }
+  </style>
+}
 
 @section PageScripts {
-<script src="~/js/app-user-view.js"></script>
-<script src="~/js/app-user-view-account.js"></script>
+  <!-- Firebase Libraries -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+
+  <script src="~/js/firebase-init.js"></script>
+  <script src="~/js/services/users-service.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async function () {
+      // Show loading indicator while loading data
+      const profileContainer = document.getElementById('profile-container');
+      const loadingIndicator = document.getElementById('loading-indicator');
+
+      // Get user ID from ViewBag or current user context
+      let userId = '@ViewBag.UserId';
+      if (!userId) {
+        userId = usersService.getCurrentUserId();
+      }
+
+      // Check if user is logged in
+      if (!userId) {
+        showError('User ID not found. Please log in again.');
+        // Redirect to login page after 2 seconds
+        setTimeout(() => {
+          window.location.href = '/Auth/LoginBasic?returnUrl=/Pages/ProfileUser';
+        }, 2000);
+        return;
+      }
+
+      try {
+        // Load user data
+        const userData = await usersService.getUserById(userId);
+        if (!userData) {
+          showError('User not found');
+          return;
+        }
+
+        // Load user address
+        const addressData = await usersService.getUserAddress(userId);
+
+        // Update UI with user data
+        updateUserProfile(userData, addressData);
+
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+        showError('Error loading profile: ' + error.message);
+      } finally {
+        // Hide loading indicator
+        if (loadingIndicator) {
+          loadingIndicator.style.display = 'none';
+        }
+
+        // Show profile container
+        if (profileContainer) {
+          profileContainer.style.display = 'block';
+        }
+      }
+
+      function updateUserProfile(user, address) {
+        // Update user info
+        document.getElementById('user-fullname').textContent = `${user.FirstName || ''} ${user.LastName || ''}`;
+        document.getElementById('page-title').textContent = `${user.FirstName || ''} ${user.LastName || ''}`;
+
+        // Set role badge
+        const roleBadge = document.getElementById('role-badge');
+        let roleText = 'User';
+        let badgeClass = 'bg-label-primary';
+
+        if (user.Role === '1') {
+          roleText = 'Admin';
+          badgeClass = 'bg-label-primary';
+        } else if (user.Role === '2') {
+          roleText = 'Affiliate';
+          badgeClass = 'bg-label-success';
+        } else if (user.Role === '3') {
+          roleText = 'Customer';
+          badgeClass = 'bg-label-info';
+        }
+
+        roleBadge.textContent = roleText;
+        roleBadge.className = `badge ${badgeClass}`;
+
+        // Set user details
+        document.getElementById('user-email').textContent = user.Email || '';
+        document.getElementById('user-phone').textContent = user.PhoneNumber || 'Not provided';
+
+        // Set address if available
+        if (address) {
+          const fullAddress = [
+            address.Line1,
+            address.Line2,
+            `${address.City}, ${address.State} ${address.ZipCode}`,
+            address.Country
+          ].filter(Boolean).join(', ');
+
+          document.getElementById('user-address').textContent = fullAddress;
+        } else {
+          document.getElementById('user-address').textContent = 'No address provided';
+        }
+      }
+
+      function showError(message) {
+        const alertsContainer = document.getElementById('alerts-container');
+        if (!alertsContainer) return;
+
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger alert-dismissible fade show';
+        alert.innerHTML = `
+                  ${message}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+
+        alertsContainer.appendChild(alert);
+      }
+    });
+  </script>
 }
 
 @* ************** Content ************** *@
 <div class="row">
-  <!-- User Sidebar -->
-  <div class="col-xl-4 col-lg-5 col-md-5 order-1 order-md-0">
-    <!-- User Card -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <div class="user-avatar-section">
-          <div class=" d-flex align-items-center flex-column">
-            @* <img class="img-fluid rounded my-4" src="~/img/avatars/10.png" height="110" width="110" alt="User avatar" /> *@
-            <div class="user-info text-center">
-              <h4 class="mb-2">@Model.FirstName @Model.LastName</h4>
-              <span class="badge bg-label-@(Model.Role == "1" ? "primary" : (Model.Role == "2" ? "success" : "info"))">
-                @(Model.Role == "1" ? "Admin" : (Model.Role == "2" ? "Affiliate" : "Customer"))
-              </span>
+  <div id="alerts-container"></div>
+
+  <!-- Page Title -->
+  <div class="col-12 mb-4">
+    <h4 class="fw-bold" id="page-title">User Profile</h4>
+  </div>
+
+  <!-- Loading Indicator -->
+  <div id="loading-indicator">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+
+  <!-- Profile Content (initially hidden) -->
+  <div id="profile-container" style="display: none">
+    <!-- User Sidebar -->
+    <div class="col-xl-4 col-lg-5 col-md-5 order-1 order-md-0">
+      <!-- User Card -->
+      <div class="card mb-4 profile-card">
+        <div class="card-body">
+          <div class="user-avatar-section">
+            <div class="d-flex align-items-center flex-column">
+              <div class="avatar avatar-xl mb-3">
+                <span class="avatar-initial rounded-circle bg-label-primary">
+                  <i class="ti ti-user ti-md"></i>
+                </span>
+              </div>
+              <div class="user-info text-center">
+                <h4 class="mb-2" id="user-fullname">Loading...</h4>
+                <span class="badge bg-label-primary" id="role-badge">User</span>
+              </div>
+            </div>
+          </div>
+          <div class="d-flex justify-content-around flex-wrap my-4">
+            <div class="d-flex align-items-center me-4 mt-3 gap-3">
+              <div class="avatar">
+                <div class="avatar-initial bg-label-primary rounded">
+                  <i class="ti ti-calendar"></i>
+                </div>
+              </div>
+              <div>
+                <h5 class="mb-0">Settings</h5>
+                <span>Account Settings</span>
+              </div>
+            </div>
+            <div class="d-flex align-items-center mt-3 gap-3">
+              <div class="avatar">
+                <div class="avatar-initial bg-label-warning rounded">
+                  <i class="ti ti-settings"></i>
+                </div>
+              </div>
+              <div>
+                <h5 class="mb-0">Security</h5>
+                <span>Password & Authentication</span>
+              </div>
+            </div>
+          </div>
+          <h5 class="pb-3 border-bottom mb-3">Details</h5>
+          <div class="info-container">
+            <ul class="list-unstyled">
+              <li class="mb-3">
+                <span class="fw-medium me-2">Email:</span>
+                <span id="user-email">Loading...</span>
+              </li>
+              <li class="mb-3">
+                <span class="fw-medium me-2">Phone:</span>
+                <span id="user-phone">Loading...</span>
+              </li>
+              <li class="mb-3">
+                <span class="fw-medium me-2">Address:</span>
+                <span id="user-address">Loading...</span>
+              </li>
+            </ul>
+            <div class="d-flex justify-content-center">
+              <a href="@Url.Action("AccountSettingsSecurity", "Pages")" class="btn btn-primary me-3">Edit Profile</a>
             </div>
           </div>
         </div>
-      
-        <h5 class="pb-2 border-bottom mb-4">Details</h5>
-        <div class="info-container">
-          <ul class="list-unstyled">
-@*             <li class="mb-3">
-              <span class="fw-medium me-2">Username:</span>
-              <span>@Model.Email?.Split('@')[0]</span>
-            </li> *@
-            <li class="mb-3">
-              <span class="fw-medium me-2">Email:</span>
-              <span>@Model.Email</span>
-            </li>
-            <li class="mb-3">
-              <span class="fw-medium me-2">Status:</span>
-              <span class="badge bg-label-success">Active</span>
-            </li>
-            <li class="mb-3">
-              <span class="fw-medium me-2">Role:</span>
-              <span>@(Model.Role == "1" ? "Admin" : (Model.Role == "2" ? "Affiliate" : "Customer"))</span>
-            </li>
-            <li class="mb-3">
-              <span class="fw-medium me-2">Contact:</span>
-              <span>@Model.PhoneNumber</span>
-            </li>
-            <li class="mb-3">
-              <span class="fw-medium me-2">Country:</span>
-              <span>Lebanon</span>
+      </div>
+    </div>
+    <!-- /User Sidebar -->
 
+    <!-- User Content -->
+    <div class="col-xl-8 col-lg-7 col-md-7 order-0 order-md-1">
+      <!-- User Activity Timeline -->
+      <div class="card mb-4">
+        <h5 class="card-header">User Activity</h5>
+        <div class="card-body pb-0">
+          <ul class="timeline mb-0">
+            <li class="timeline-item timeline-item-transparent">
+              <span class="timeline-point timeline-point-primary"></span>
+              <div class="timeline-event">
+                <div class="timeline-header mb-1">
+                  <h6 class="mb-0">Profile viewed</h6>
+                  <small class="text-muted">Today</small>
+                </div>
+                <p class="mb-2">User viewed their profile</p>
+              </div>
+            </li>
+            <li class="timeline-item timeline-item-transparent">
+              <span class="timeline-point timeline-point-warning"></span>
+              <div class="timeline-event">
+                <div class="timeline-header mb-1">
+                  <h6 class="mb-0">Account settings updated</h6>
+                  <small class="text-muted">Last week</small>
+                </div>
+                <p class="mb-2">User updated their account settings</p>
+              </div>
+            </li>
+            <li class="timeline-end-indicator">
+              <i class="ti ti-circle"></i>
             </li>
           </ul>
-          @* <div class="d-flex justify-content-center pt-3">
-            <a href="@Url.Action("Settings", "Account")" class="btn btn-primary me-3">Edit</a>
-            <a href="javascript:;" class="btn btn-label-danger suspend-user">Suspend</a>
-          </div> *@
         </div>
       </div>
     </div>
-    <!-- /User Card -->
-
   </div>
-  <!--/ User Sidebar -->
-
-
-  <!-- User Content -->
-  <div class="col-xl-8 col-lg-7 col-md-7 order-0 order-md-1">
-    <!-- User Pills -->
-    <ul class="nav nav-pills flex-column flex-md-row mb-3">
-      <li class="nav-item"><a class="nav-link active" href="javascript:void(0);"><i class="ti ti-user-check ti-xs me-1"></i>Account</a></li>
-      <li class="nav-item"><a class="nav-link" href="app-user-view-security.html"><i class="ti ti-lock ti-xs me-1"></i>Security</a></li>
-      @* <li class="nav-item"><a class="nav-link" href="app-user-view-billing.html"><i class="ti ti-currency-dollar ti-xs me-1"></i>Billing & Plans</a></li> *@
-      @* <li class="nav-item"><a class="nav-link" href="app-user-view-notifications.html"><i class="ti ti-bell ti-xs me-1"></i>Notifications</a></li> *@
-      @* <li class="nav-item"><a class="nav-link" href="app-user-view-connections.html"><i class="ti ti-link ti-xs me-1"></i>Connections</a></li> *@
-    </ul>
-    <!--/ User Pills -->
-
-    <!-- Activity Timeline -->
-    <div class="card mb-4">
-      <h5 class="card-header">User Activity Timeline</h5>
-      <div class="card-body pb-0">
-        <ul class="timeline mb-0">
-          <li class="timeline-item timeline-item-transparent">
-            <span class="timeline-point timeline-point-primary"></span>
-            <div class="timeline-event">
-              <div class="timeline-header mb-1">
-                <h6 class="mb-0">12 Invoices have been paid</h6>
-                <small class="text-muted">12 min ago</small>
-              </div>
-              <p class="mb-2">Invoices have been paid to the company</p>
-              <div class="d-flex">
-                <a href="javascript:void(0)" class="me-3">
-                  <img src="~/img/icons/misc/pdf.png" alt="PDF image" width="15" class="me-2">
-                  <span class="fw-medium text-body">invoices.pdf</span>
-                </a>
-              </div>
-            </div>
-          </li>
-          
-
-        </ul>
-      </div>
-    </div>
-    <!-- /Activity Timeline -->
-
-    <!-- Invoice table -->
-    <div class="card mb-4">
-      <div class="table-responsive mb-3">
-        <table class="table datatable-invoice border-top">
-          <thead>
-            <tr>
-              <th></th>
-              <th>ID</th>
-              <th><i class='ti ti-calendar'></i></th>
-              <th>Total</th>
-              <th>Issued Date</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-        </table>
-      </div>
-    </div>
-    <!-- /Invoice table -->
-  </div>
-  <!--/ User Content -->
 </div>

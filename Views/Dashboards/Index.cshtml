@@ -1,110 +1,251 @@
+@using Microsoft.AspNetCore.Http
+@inject IHttpContextAccessor HttpContextAccessor
+
 @{
-    ViewData["Title"] = "Affiliate Marketing Dashboard";
+    ViewData["Title"] = "Admin Dashboard";
 }
 
 @section VendorStyles {
     <link rel="stylesheet" href="~/vendor/libs/apex-charts/apex-charts.css" />
-    <link rel="stylesheet" href="~/vendor/libs/swiper/swiper.css" />
-    <link rel="stylesheet" href="~/vendor/libs/daterangepicker/daterangepicker.css" />
+    <link rel="stylesheet" href="~/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/flatpickr/flatpickr.css" />
 }
 
 @section VendorScripts {
-    <script src="~/vendor/libs/jquery/jquery.js"></script>
-    <script src="~/vendor/libs/moment/moment.min.js"></script>
+    <!-- Make sure jQuery is loaded first -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="~/vendor/libs/apex-charts/apexcharts.js"></script>
-    <script src="~/vendor/libs/daterangepicker/daterangepicker.js"></script>
-}
-
-
-@section PageStyles {
-    <link rel="stylesheet" href="~/vendor/css/pages/cards-advance.css" />
+    <script src="~/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+    <script src="~/vendor/libs/flatpickr/flatpickr.js"></script>
+    <script src="~/vendor/libs/moment/moment.js"></script>
+    <script src="~/vendor/libs/sweetalert2/sweetalert2.js"></script>
 }
 
 @section PageScripts {
-    <script src="~/js/dashboards-affiliate.js"></script>
+    <!-- Load shared functions first -->
+    <script src="~/js/shared-dashboard-functions.js"></script>
+    <!-- Then load the admin dashboard script -->
+    <script src="~/js/admin-dashboard.js"></script>
 }
-<!-- Required for dashboard functionality -->
-<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
-<!-- Required libraries -->
-<script src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.11.1/typeahead.bundle.min.js"></script>
 
+<!-- Firebase configuration - this should be set before loading firebase-init.js -->
+<script>
+    // Pass Firebase configuration from server to client
+    window.firebaseConfig = {
+        apiKey: "@ViewBag.FirebaseApiKey",
+        authDomain: "@ViewBag.FirebaseProjectId" + ".firebaseapp.com",
+        projectId: "@ViewBag.FirebaseProjectId",
+        storageBucket: "@ViewBag.FirebaseStorageBucket",
+        messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+        appId: "@ViewBag.FirebaseAppId"
+    };
 
-@* ************** Content ************** *@
-<div class="row g-6">
-    <!-- Date Range Filter -->
-    <div class="col-12">
-        <div class="card mb-4">
+    // Set user context for access control
+    window.userContext = {
+        userId: "@ViewBag.UserId",
+        isAdmin: "@ViewBag.IsAdmin" === "1",
+        isAffiliate: "@ViewBag.IsAffiliate" === "1",
+        isCustomer: "@ViewBag.IsCustomer" === "1"
+    };
+
+    // Debug info
+    console.log("Admin Dashboard loaded with user context:", window.userContext);
+</script>
+
+<!-- Admin Dashboard Content -->
+<div class="row">
+    <!-- Date Range Picker -->
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Sales Performance</h5>
+                <div class="d-flex align-items-center gap-3">
+                    <div id="reportrange" class="form-control">
+                        <i class="ti ti-calendar me-2"></i>
+                        <span>Select Date Range</span>
+                        <i class="ti ti-chevron-down ms-1"></i>
+                    </div>
+                    <button id="refresh-dashboard" class="btn btn-primary">
+                        <i class="ti ti-refresh me-1"></i> Refresh
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-primary dropdown-toggle" type="button" id="dashboardActions" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="ti ti-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dashboardActions">
+                            <li>
+                                <a class="dropdown-item" href="javascript:void(0);" id="exportOrders">
+                                    <i class="ti ti-file-export me-1"></i> Export Orders
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="javascript:void(0);" id="print-dashboard">
+                                    <i class="ti ti-printer me-1"></i> Print Dashboard
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="col-lg-3 col-sm-6 mb-4">
+        <div class="card">
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h5>Performance Overview</h5>
-                        <p class="card-subtitle">Filter analytics data by date range</p>
+                <div class="d-flex justify-content-between">
+                    <div class="card-info">
+                        <h5 class="mb-0" id="total-revenue">$0.00</h5>
+                        <small>Total Revenue</small>
                     </div>
-                    <div class="col-md-6 d-flex justify-content-end align-items-center">
-                        <div id="reportrange" class="form-control">
-                            <i class="ti ti-calendar me-2"></i>
-                            <span></span>
-                            <i class="ti ti-chevron-down ms-2"></i>
-                        </div>
+                    <div class="card-icon">
+                        <span class="badge bg-label-primary rounded p-2">
+                            <i class="ti ti-currency-dollar ti-sm"></i>
+                        </span>
                     </div>
+                </div>
+                <div class="d-flex align-items-center mt-4">
+                    <div class="progress w-100" style="height: 8px;">
+                        <div class="progress-bar bg-primary" id="revenue-progress" style="width: 0%"></div>
+                    </div>
+                    <span class="text-muted ms-2" id="revenue-growth">+0%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="col-lg-3 col-sm-6 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div class="card-info">
+                        <h4 class="mb-0" id="totalCustomersCount">0</h4>
+                        <small>Total Customers</small>
+                    </div>
+                    <div class="card-icon">
+                        <span class="badge bg-label-info rounded p-2">
+                            <i class="ti ti-user-check ti-sm"></i>
+                        </span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center mt-4">
+                    <div class="progress w-100" style="height: 8px;">
+                        <div class="progress-bar bg-info" style="width: 50%"></div>
+                    </div>
+                    <span class="text-muted ms-2">+22%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-sm-6 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div class="card-info">
+                        <h4 class="mb-0" id="totalOrdersCount">0</h4>
+                        <small>Total Orders</small>
+                    </div>
+                    <div class="card-icon">
+                        <span class="badge bg-label-success rounded p-2">
+                            <i class="ti ti-shopping-cart ti-sm"></i>
+                        </span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center mt-4">
+                    <div class="progress w-100" style="height: 8px;">
+                        <div class="progress-bar bg-success" style="width: 60%"></div>
+                    </div>
+                    <span class="text-muted ms-2">+15%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-sm-6 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div class="card-info">
+                        <h4 class="mb-0" id="conversionRate">0%</h4>
+                        <small>Conversion Rate</small>
+                    </div>
+                    <div class="card-icon">
+                        <span class="badge bg-label-warning rounded p-2">
+                            <i class="ti ti-chart-bar ti-sm"></i>
+                        </span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center mt-4">
+                    <div class="progress w-100" style="height: 8px;">
+                        <div class="progress-bar bg-warning" style="width: 35%"></div>
+                    </div>
+                    <span class="text-muted ms-2">+5%</span>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Revenue Overview -->
-    <div class="col-xl-8 col-lg-7">
-        <div class="card h-100">
-            <div class="card-header pb-0 d-flex justify-content-between">
-                <div class="card-title mb-0">
-                    <h5 class="mb-1">Revenue Overview</h5>
-                    <p class="card-subtitle">Total Revenue Growth Analysis</p>
+    <div class="col-12 col-xl-8 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <div>
+                    <h5 class="card-title mb-0">Revenue Overview</h5>
+                    <small class="text-muted">Monthly revenue, commissions, and profit</small>
                 </div>
                 <div class="dropdown">
-                    <button class="btn btn-text-secondary rounded-pill text-muted border-0 p-2 me-n1" type="button" id="revenueOptions" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class="ti ti-dots-vertical ti-md text-muted"></i>
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="revenueOverviewDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        2023
                     </button>
-                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="revenueOptions">
-                        <a class="dropdown-item" href="javascript:void(0);">View Details</a>
-                        <a class="dropdown-item" href="javascript:void(0);">Export Report</a>
-                    </div>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="revenueOverviewDropdown">
+                        <li><a class="dropdown-item" href="javascript:void(0);">2023</a></li>
+                        <li><a class="dropdown-item" href="javascript:void(0);">2022</a></li>
+                    </ul>
                 </div>
             </div>
             <div class="card-body">
                 <div id="revenueChart"></div>
-                <div class="border rounded p-5 mt-5">
-                    <div class="row gap-4 gap-sm-0">
-                        <div class="col-12 col-sm-4">
-                            <div class="d-flex gap-2 align-items-center">
-                                <div class="badge rounded bg-label-primary p-1"><i class="ti ti-currency-dollar ti-sm"></i></div>
-                                <h6 class="mb-0 fw-normal">Total Revenue</h6>
+            </div>
+        </div>
+    </div>
+
+    <!-- Commission Stats -->
+    <div class="col-12 col-xl-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Commission Stats</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12 mb-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">Total Commissions</h6>
+                                <small class="text-muted">All time earnings</small>
                             </div>
-                            <h4 class="my-2" id="totalRevenue">$0</h4>
-                            <div class="progress w-75" style="height:4px">
-                                <div class="progress-bar" role="progressbar" style="width: 65%" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
+                            <h2 class="mb-0" id="totalCommissionAmount">$0.00</h2>
                         </div>
-                        <div class="col-12 col-sm-4">
-                            <div class="d-flex gap-2 align-items-center">
-                                <div class="badge rounded bg-label-info p-1"><i class="ti ti-chart-pie-2 ti-sm"></i></div>
-                                <h6 class="mb-0 fw-normal">Affiliate Earnings</h6>
+                    </div>
+                    <div class="col-12 mb-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">Paid Commissions</h6>
+                                <small class="text-muted">Total paid to affiliates</small>
                             </div>
-                            <h4 class="my-2" id="affiliateEarnings">$0</h4>
-                            <div class="progress w-75" style="height:4px">
-                                <div class="progress-bar bg-info" role="progressbar" style="width: 50%" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
+                            <h2 class="mb-0 text-success" id="paidCommissionAmount">$0.00</h2>
                         </div>
-                        <div class="col-12 col-sm-4">
-                            <div class="d-flex gap-2 align-items-center">
-                                <div class="badge rounded bg-label-success p-1"><i class="ti ti-receipt ti-sm"></i></div>
-                                <h6 class="mb-0 fw-normal">Net Profit</h6>
+                    </div>
+                    <div class="col-12 mb-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">Pending Payouts</h6>
+                                <small class="text-muted">Next payout: <span id="nextPayoutDate">-</span></small>
                             </div>
-                            <h4 class="my-2" id="netProfit">$0</h4>
-                            <div class="progress w-75" style="height:4px">
-                                <div class="progress-bar bg-success" role="progressbar" style="width: 65%" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
+                            <h2 class="mb-0 text-warning" id="pendingPayoutAmount">$0.00</h2>
                         </div>
                     </div>
                 </div>
@@ -112,101 +253,76 @@
         </div>
     </div>
 
-    <!-- Performance Cards -->
-    <div class="col-xl-4 col-lg-5">
-        <div class="row g-3">
-            <!-- Affiliates Card -->
-            <div class="col-12 col-sm-6 col-xl-12">
-                <div class="card">
-                    <div class="card-header pb-0 d-flex justify-content-between">
-                        <h5 class="mb-0">Active Affiliates</h5>
-                        <span class="badge bg-label-primary p-2"><i class="ti ti-users"></i></span>
-                    </div>
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h2 id="activeAffiliatesCount" class="mb-1">0</h2>
-                                <span id="affiliateGrowth" class="badge bg-label-success">+0%</span>
-                                <span>since last month</span>
-                            </div>
-                            <div id="affiliateGrowthChart"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Customers Card -->
-            <div class="col-12 col-sm-6 col-xl-12">
-                <div class="card">
-                    <div class="card-header pb-0 d-flex justify-content-between">
-                        <h5 class="mb-0">Total Customers</h5>
-                        <span class="badge bg-label-info p-2"><i class="ti ti-user-check"></i></span>
-                    </div>
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h2 id="totalCustomersCount" class="mb-1">0</h2>
-                                <span id="customerGrowth" class="badge bg-label-success">+0%</span>
-                                <span>since last month</span>
-                            </div>
-                            <div id="customerGrowthChart"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Orders & Conversion Rate -->
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header pb-0 d-flex justify-content-between">
-                        <h5 class="mb-0">Orders & Conversion</h5>
-                        <span class="badge bg-label-warning p-2"><i class="ti ti-shopping-cart"></i></span>
-                    </div>
-                    <div class="card-body row">
-                        <div class="col-6 border-end">
-                            <div>
-                                <h2 id="totalOrdersCount" class="mb-1">0</h2>
-                                <p class="mb-0">Total Orders</p>
-                                <span id="orderGrowth" class="badge bg-label-success mt-2">+0%</span>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div>
-                                <h2 id="conversionRate" class="mb-1">0%</h2>
-                                <p class="mb-0">Conversion Rate</p>
-                                <span id="conversionGrowth" class="badge bg-label-success mt-2">+0%</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Products Performance -->
-    <div class="col-md-6">
-        <div class="card h-100">
+    <!-- Growth Charts -->
+    <div class="col-12 col-xl-4 mb-4">
+        <div class="card">
             <div class="card-header d-flex justify-content-between">
-                <div class="card-title mb-0">
-                    <h5 class="mb-1">Top Products</h5>
-                    <p class="card-subtitle">Best Performing Products by Revenue</p>
+                <div>
+                    <h5 class="card-title mb-0">Affiliate Growth</h5>
+                    <small class="text-muted">Monthly affiliate registrations</small>
                 </div>
-                <div class="dropdown">
-                    <button class="btn btn-text-secondary rounded-pill text-muted border-0 p-2 me-n1" type="button" id="productOptions" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class="ti ti-dots-vertical ti-md text-muted"></i>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="productOptions">
-                        <a class="dropdown-item" href="javascript:void(0);">View All Products</a>
-                        <a class="dropdown-item" href="javascript:void(0);">Export Report</a>
-                    </div>
+            </div>
+            <div class="card-body">
+                <div id="affiliateGrowthChart"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-4 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <div>
+                    <h5 class="card-title mb-0">Customer Growth</h5>
+                    <small class="text-muted">Monthly customer acquisitions</small>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="customerGrowthChart"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-4 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <div>
+                    <h5 class="card-title mb-0">Top Products</h5>
+                    <small class="text-muted">Best selling products by revenue</small>
                 </div>
             </div>
             <div class="card-body">
                 <div id="topProductsChart"></div>
-                <div class="table-responsive mt-4">
-                    <table class="table table-sm table-borderless">
-                        <tbody id="topProductsTable">
-                            <!-- Top products will be inserted here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Affiliates -->
+    <div class="col-12 col-xl-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between">
+                <div>
+                    <h5 class="card-title mb-0">Top Affiliates</h5>
+                    <small class="text-muted">Best performing affiliates by commission</small>
+                </div>
+                <a href="/Admin/Affiliates" class="btn btn-sm btn-primary">View All</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="topAffiliatesTable">
+                        <thead>
+                            <tr>
+                                <th>Affiliate</th>
+                                <th>Customers</th>
+                                <th>Orders</th>
+                                <th>Revenue</th>
+                                <th>Commission</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Will be populated by JavaScript -->
+                            <tr>
+                                <td colspan="5" class="text-center">Loading affiliates...</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -214,298 +330,82 @@
         </div>
     </div>
 
-    <!-- Profit Margin Analysis -->
-    <div class="col-md-6">
+    <!-- Recent Commissions -->
+    <div class="col-12 col-xl-6 mb-4">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between">
-                <div class="card-title mb-0">
-                    <h5 class="mb-1">Profit Margin Analysis</h5>
-                    <p class="card-subtitle">Revenue vs Profit Margin</p>
+                <div>
+                    <h5 class="card-title mb-0">Recent Commissions</h5>
+                    <small class="text-muted">Latest commission transactions</small>
                 </div>
-                <div class="dropdown">
-                    <button class="btn btn-text-secondary rounded-pill text-muted border-0 p-2 me-n1" type="button" id="marginOptions" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class="ti ti-dots-vertical ti-md text-muted"></i>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="marginOptions">
-                        <a class="dropdown-item" href="javascript:void(0);">View Details</a>
-                        <a class="dropdown-item" href="javascript:void(0);">Export Report</a>
-                    </div>
-                </div>
+                <a href="/Admin/Commissions" class="btn btn-sm btn-primary">View All</a>
             </div>
             <div class="card-body">
-                <div id="profitMarginChart"></div>
-                <div class="row mt-4 text-center">
-                    <div class="col-4">
-                        <div class="mb-2">
-                            <span class="badge bg-label-primary p-2 rounded"><i class="ti ti-currency-dollar ti-md"></i></span>
-                        </div>
-                        <h6 class="mb-1">Avg. Profit Margin</h6>
-                        <p id="avgProfitMargin" class="mb-0">0%</p>
-                    </div>
-                    <div class="col-4">
-                        <div class="mb-2">
-                            <span class="badge bg-label-success p-2 rounded"><i class="ti ti-chart-bar ti-md"></i></span>
-                        </div>
-                        <h6 class="mb-1">Best Margin</h6>
-                        <p id="bestProfitMargin" class="mb-0">0%</p>
-                    </div>
-                    <div class="col-4">
-                        <div class="mb-2">
-                            <span class="badge bg-label-danger p-2 rounded"><i class="ti ti-chart-line-down ti-md"></i></span>
-                        </div>
-                        <h6 class="mb-1">Lowest Margin</h6>
-                        <p id="lowestProfitMargin" class="mb-0">0%</p>
-                    </div>
+                <div class="table-responsive">
+                    <table class="table table-hover" id="recentCommissionsTable">
+                        <thead>
+                            <tr>
+                                <th>Affiliate</th>
+                                <th>Order</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Will be populated by JavaScript -->
+                            <tr>
+                                <td colspan="5" class="text-center">Loading commissions...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Affiliate Performance -->
-    <div class="col-xl-4 col-md-6">
-        <div class="card h-100">
+    <!-- Recent Orders -->
+    <div class="col-12 mb-4">
+        <div class="card">
             <div class="card-header d-flex justify-content-between">
-                <div class="card-title mb-0">
-                    <h5 class="mb-1">Top Affiliates</h5>
-                    <p class="card-subtitle">Best Performing Affiliates</p>
+                <div>
+                    <h5 class="card-title mb-0">Recent Orders</h5>
+                    <small class="text-muted">Latest orders with status</small>
                 </div>
-                <div class="dropdown">
-                    <button class="btn btn-text-secondary rounded-pill text-muted border-0 p-2 me-n1" type="button" id="affiliateOptions" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class="ti ti-dots-vertical ti-md text-muted"></i>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="affiliateOptions">
-                        <a class="dropdown-item" href="javascript:void(0);">View All Affiliates</a>
-                        <a class="dropdown-item" href="javascript:void(0);">Export Report</a>
-                    </div>
+                <a href="/Admin/Orders" class="btn btn-sm btn-primary">View All</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="recentOrdersTable">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Will be populated by JavaScript -->
+                            <tr>
+                                <td colspan="6" class="text-center">Loading orders...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
-                  <div class="card-body">
-        <ul class="list-unstyled mb-0">
-          <div id="topAffiliatesList">
-            <!-- Top affiliates will be inserted here dynamically -->
-          </div>
-        </ul>
-      </div>
+        </div>
     </div>
-  </div>
-  
-  <!-- Customer Acquisition -->
-  <div class="col-xl-4 col-md-6">
-    <div class="card h-100">
-      <div class="card-header d-flex justify-content-between">
-        <div class="card-title mb-0">
-          <h5 class="mb-1">Customer Acquisition</h5>
-          <p class="card-subtitle">Acquisition Channels Analysis</p>
-        </div>
-        <div class="dropdown">
-          <button class="btn btn-text-secondary rounded-pill text-muted border-0 p-2 me-n1" type="button" id="acquisitionOptions" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-            <i class="ti ti-dots-vertical ti-md text-muted"></i>
-          </button>
-          <div class="dropdown-menu dropdown-menu-end" aria-labelledby="acquisitionOptions">
-            <a class="dropdown-item" href="javascript:void(0);">View Details</a>
-            <a class="dropdown-item" href="javascript:void(0);">Export Report</a>
-          </div>
-        </div>
-      </div>
-      <div class="card-body">
-        <div id="acquisitionChart"></div>
-        <div class="mt-4">
-          <div class="d-flex align-items-center mb-3">
-            <div class="flex-shrink-0 me-3">
-              <div class="badge bg-label-primary p-2"><i class="ti ti-link ti-sm"></i></div>
-            </div>
-            <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
-              <div>
-                <h6 class="mb-0">Affiliate Links</h6>
-                <small class="text-muted">Direct affiliate referrals</small>
-              </div>
-              <h6 class="mb-0" id="affiliateReferralPercentage">0%</h6>
-            </div>
-          </div>
-          <div class="d-flex align-items-center mb-3">
-            <div class="flex-shrink-0 me-3">
-              <div class="badge bg-label-info p-2"><i class="ti ti-brand-google ti-sm"></i></div>
-            </div>
-            <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
-              <div>
-                <h6 class="mb-0">Organic Search</h6>
-                <small class="text-muted">Google, Bing, Yahoo</small>
-              </div>
-              <h6 class="mb-0" id="organicSearchPercentage">0%</h6>
-            </div>
-          </div>
-          <div class="d-flex align-items-center mb-3">
-            <div class="flex-shrink-0 me-3">
-              <div class="badge bg-label-success p-2"><i class="ti ti-brand-facebook ti-sm"></i></div>
-            </div>
-            <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
-              <div>
-                <h6 class="mb-0">Social Media</h6>
-                <small class="text-muted">Facebook, Twitter, Instagram</small>
-              </div>
-              <h6 class="mb-0" id="socialMediaPercentage">0%</h6>
-            </div>
-          </div>
-          <div class="d-flex align-items-center">
-            <div class="flex-shrink-0 me-3">
-              <div class="badge bg-label-warning p-2"><i class="ti ti-mail ti-sm"></i></div>
-            </div>
-            <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
-              <div>
-                <h6 class="mb-0">Email Marketing</h6>
-                <small class="text-muted">Newsletters & campaigns</small>
-              </div>
-              <h6 class="mb-0" id="emailMarketingPercentage">0%</h6>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Invoice Analysis -->
-  <div class="col-xl-4 col-md-6">
-    <div class="card h-100">
-      <div class="card-header d-flex justify-content-between">
-        <div class="card-title mb-0">
-          <h5 class="mb-1">Invoice Analysis</h5>
-          <p class="card-subtitle">Payment Status & Trends</p>
-        </div>
-        <div class="dropdown">
-          <button class="btn btn-text-secondary rounded-pill text-muted border-0 p-2 me-n1" type="button" id="invoiceOptions" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-            <i class="ti ti-dots-vertical ti-md text-muted"></i>
-          </button>
-          <div class="dropdown-menu dropdown-menu-end" aria-labelledby="invoiceOptions">
-            <a class="dropdown-item" href="javascript:void(0);">View All Invoices</a>
-            <a class="dropdown-item" href="javascript:void(0);">Export Report</a>
-          </div>
-        </div>
-      </div>
-      <div class="card-body">
-        <div id="invoiceStatusChart"></div>
-        <div class="row text-center mt-4">
-          <div class="col-4">
-            <div class="mb-1">
-              <span class="badge rounded-pill bg-label-success">Paid</span>
-            </div>
-            <h6 id="paidInvoicesCount" class="mb-0">0</h6>
-            <small class="text-muted" id="paidInvoicesAmount">$0</small>
-          </div>
-          <div class="col-4">
-            <div class="mb-1">
-              <span class="badge rounded-pill bg-label-warning">Pending</span>
-            </div>
-            <h6 id="pendingInvoicesCount" class="mb-0">0</h6>
-            <small class="text-muted" id="pendingInvoicesAmount">$0</small>
-          </div>
-          <div class="col-4">
-            <div class="mb-1">
-              <span class="badge rounded-pill bg-label-danger">Overdue</span>
-            </div>
-            <h6 id="overdueInvoicesCount" class="mb-0">0</h6>
-            <small class="text-muted" id="overdueInvoicesAmount">$0</small>
-          </div>
-        </div>
-        <hr class="my-4">
-        <div class="d-flex justify-content-between align-items-center">
-          <div>
-            <h6 class="mb-0">Average Payment Time</h6>
-            <small class="text-muted">Time to pay invoices</small>
-          </div>
-          <h6 id="avgPaymentTime" class="mb-0">0 days</h6>
-        </div>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Recent Orders -->
-  <div class="col-12">
-    <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Recent Orders</h5>
-        <div class="d-flex gap-2">
-          <button class="btn btn-primary" type="button" id="exportOrders">
-            <i class="ti ti-file-export me-1"></i> Export
-          </button>
-          <a href="/Orders" class="btn btn-outline-primary">
-            <i class="ti ti-list me-1"></i> View All
-          </a>
-        </div>
-      </div>
-      <div class="card-datatable table-responsive">
-        <table class="datatables-orders table table-hover">
-          <thead>
-            <tr>
-              <th>Order ID</th>
-              <th>Customer</th>
-              <th>Affiliate</th>
-              <th>Date</th>
-              <th>Products</th>
-              <th>Amount</th>
-              <th>Commission</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Order data will be inserted here dynamically -->
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Affiliate Commissions & Payouts -->
-  <div class="col-12">
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0">Affiliate Commissions & Payouts</h5>
-      </div>
-      <div class="card-body">
-        <div class="row mb-4">
-          <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-            <div class="d-flex align-items-center">
-              <div class="badge bg-label-primary p-2 me-3"><i class="ti ti-currency-dollar ti-md"></i></div>
-              <div>
-                <h6 class="mb-0">Total Commissions</h6>
-                <h4 id="totalCommissionAmount" class="mb-0">$0</h4>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-            <div class="d-flex align-items-center">
-              <div class="badge bg-label-success p-2 me-3"><i class="ti ti-check ti-md"></i></div>
-              <div>
-                <h6 class="mb-0">Paid Commissions</h6>
-                <h4 id="paidCommissionAmount" class="mb-0">$0</h4>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-3 col-sm-6 mb-3 mb-sm-0">
-            <div class="d-flex align-items-center">
-              <div class="badge bg-label-warning p-2 me-3"><i class="ti ti-clock ti-md"></i></div>
-              <div>
-                <h6 class="mb-0">Pending Payouts</h6>
-                <h4 id="pendingPayoutAmount" class="mb-0">$0</h4>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-3 col-sm-6">
-            <div class="d-flex align-items-center">
-              <div class="badge bg-label-info p-2 me-3"><i class="ti ti-calendar ti-md"></i></div>
-              <div>
-                <h6 class="mb-0">Next Payout Date</h6>
-                <h4 id="nextPayoutDate" class="mb-0">--/--/----</h4>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div id="commissionTrendChart"></div>
-      </div>
-    </div>
-  </div>
 </div>
 
-<!-- JavaScript for Dashboard -->
-
+<script>
+    window.userContext = {
+        userId: "@ViewBag.UserId",
+        isAdmin: "@ViewBag.IsAdmin" === "1",
+        isAffiliate: "@ViewBag.IsAffiliate" === "1",
+        isCustomer: "@ViewBag.IsCustomer" === "1"
+    };
+</script>
 

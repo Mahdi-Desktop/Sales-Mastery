@@ -3,58 +3,201 @@
   ViewData["Title"] = "Account settings - Account";
 }
 
-@section VendorStyles{
-<link rel="stylesheet" href="~/vendor/libs/select2/select2.css" />
-<link rel="stylesheet" href="~/vendor/libs/&#64;form-validation/form-validation.css" />
-<link rel="stylesheet" href="~/vendor/libs/animate-css/animate.css" />
-<link rel="stylesheet" href="~/vendor/libs/sweetalert2/sweetalert2.css" />
+@section VendorStyles {
+  <link rel="stylesheet" href="~/vendor/libs/select2/select2.css" />
+  <link rel="stylesheet" href="~/vendor/libs/&#64;form-validation/form-validation.css" />
+  <link rel="stylesheet" href="~/vendor/libs/animate-css/animate.css" />
+  <link rel="stylesheet" href="~/vendor/libs/sweetalert2/sweetalert2.css" />
 }
 
 @section VendorScripts {
-<script src="~/vendor/libs/select2/select2.js"></script>
-<script src="~/vendor/libs/&#64;form-validation/popular.js"></script>
-<script src="~/vendor/libs/&#64;form-validation/bootstrap5.js"></script>
-<script src="~/vendor/libs/&#64;form-validation/auto-focus.js"></script>
-<script src="~/vendor/libs/cleavejs/cleave.js"></script>
-<script src="~/vendor/libs/cleavejs/cleave-phone.js"></script>
-<script src="~/vendor/libs/sweetalert2/sweetalert2.js"></script>
+  <script src="~/vendor/libs/select2/select2.js"></script>
+  <script src="~/vendor/libs/&#64;form-validation/popular.js"></script>
+  <script src="~/vendor/libs/&#64;form-validation/bootstrap5.js"></script>
+  <script src="~/vendor/libs/&#64;form-validation/auto-focus.js"></script>
+  <script src="~/vendor/libs/cleavejs/cleave.js"></script>
+  <script src="~/vendor/libs/cleavejs/cleave-phone.js"></script>
+  <script src="~/vendor/libs/sweetalert2/sweetalert2.js"></script>
 }
 
 @section PageScripts {
-<script src="~/js/pages-account-settings-account.js"></script>
+  <script>
+    // Make user ID available to client scripts
+    var viewBagUserId = "@ViewBag.UserId";
+
+    // Firebase configuration from ViewBag
+    window.firebaseConfig = {
+      apiKey: "@ViewBag.FirebaseApiKey",
+      authDomain: "@ViewBag.FirebaseAuthDomain",
+      projectId: "@ViewBag.FirebaseProjectId",
+      storageBucket: "@ViewBag.FirebaseStorageBucket",
+      messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+      appId: "@ViewBag.FirebaseAppId"
+    };
+  </script>
+  <script src="~/js/firebase-init.js"></script>
+  <script src="~/js/services/users-service.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const formAccountSettings = document.getElementById('formAccountSettings');
+      const loadingIndicator = document.getElementById('loading-indicator');
+
+      // Get user ID from all possible sources
+      let userId = viewBagUserId ||
+        (window.userContext ? window.userContext.userId : null) ||
+        sessionStorage.getItem('UserId') ||
+        sessionStorage.getItem('userId');
+
+      if (!userId) {
+        showMessage('No user ID found. Please log in again.', 'danger');
+        return;
+      }
+
+      // Show loading state
+      toggleLoading(true);
+
+      // Function to load user data
+      async function loadUserData() {
+        try {
+          // Wait for Firebase to initialize
+          if (!window.firebaseInitialized) {
+            await initializeFirebase();
+          }
+
+          // Load user data from Firestore
+          const userData = await usersService.getUserById(userId);
+          if (!userData) {
+            showMessage('User not found', 'danger');
+            return;
+          }
+
+          // Load user address
+          const addressData = await usersService.getUserAddress(userId);
+
+          // Populate form with user data
+          populateForm(userData, addressData);
+        } catch (error) {
+          console.error('Error loading user data:', error);
+          showMessage('Error loading data: ' + error.message, 'danger');
+        } finally {
+          toggleLoading(false);
+        }
+      }
+
+      // Start loading data
+      loadUserData();
+
+      // Function to populate form fields
+      function populateForm(userData, addressData) {
+        // Set basic fields
+        setFieldValue('UserId', userData.userId);
+        setFieldValue('FirstName', userData.FirstName);
+        setFieldValue('LastName', userData.LastName);
+        setFieldValue('Email', userData.Email);
+        setFieldValue('PhoneNumber', userData.PhoneNumber);
+
+        // Set organization if available
+        if (userData.Organization) {
+          setFieldValue('organization', userData.Organization);
+        }
+
+        // Set address fields if available
+        if (addressData) {
+          setFieldValue('address', addressData.Line1);
+          setFieldValue('state', addressData.State);
+          setFieldValue('zipCode', addressData.ZipCode);
+        }
+      }
+
+      // Helper function to set field value
+      function setFieldValue(fieldId, value) {
+        const field = document.getElementById(fieldId);
+        if (field && value) {
+          field.value = value;
+        }
+      }
+
+      // Function to toggle loading state
+      function toggleLoading(isLoading) {
+        if (loadingIndicator) {
+          loadingIndicator.style.display = isLoading ? 'flex' : 'none';
+        }
+
+        // Toggle form fields disabled state
+        if (formAccountSettings) {
+          const formFields = formAccountSettings.querySelectorAll('input, select, button');
+          formFields.forEach(field => {
+            field.disabled = isLoading;
+          });
+        }
+      }
+
+      // Function to show messages
+      function showMessage(message, type = 'success') {
+        const alertsContainer = document.getElementById('alerts-container');
+        if (!alertsContainer) return;
+
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          `;
+
+        alertsContainer.appendChild(alert);
+      }
+    });
+  </script>
 }
 
 @* ************** Content ************** *@
 <div class="row">
   <div class="col-md-12">
-    @if (TempData["SuccessMessage"] != null)
-    {
-      <div class="alert alert-success" role="alert">
-        @TempData["SuccessMessage"]
-      </div>
-    }
-    
-    @if (TempData["ErrorMessage"] != null)
-    {
-      <div class="alert alert-danger" role="alert">
-        @TempData["ErrorMessage"]
-      </div>
-    }
-    
-    <div class="nav-align-top">
+    <div id="alerts-container">
+      @if (TempData["SuccessMessage"] != null)
+      {
+        <div class="alert alert-success" role="alert">
+          @TempData["SuccessMessage"]
+        </div>
+      }
+
+      @if (TempData["ErrorMessage"] != null)
+      {
+        <div class="alert alert-danger" role="alert">
+          @TempData["ErrorMessage"]
+        </div>
+      }
+    </div>
+
+    <div class="nav-align-top mb-4">
       <ul class="nav nav-pills flex-column flex-md-row mb-6 gap-2 gap-lg-0">
-        <li class="nav-item"><a class="nav-link active" href="javascript:void(0);"><i class="ti-sm ti ti-users me-1_5"></i> Account</a></li>
-        <li class="nav-item"><a class="nav-link" href="@Url.Action("Security", "Account")"><i class="ti-sm ti ti-lock me-1_5"></i> Security</a></li>
-        <li class="nav-item"><a class="nav-link" href="AccountSettingsBilling"><i class="ti-sm ti ti-bookmark me-1_5"></i> Billing & Plans</a></li>
-        <li class="nav-item"><a class="nav-link" href="AccountSettingsNotifications"><i class="ti-sm ti ti-bell me-1_5"></i> Notifications</a></li>
-        <li class="nav-item"><a class="nav-link" href="AccountSettingsConnections"><i class="ti-sm ti ti-link me-1_5"></i> Connections</a></li>
+        <li class="nav-item"><a class="nav-link active" href="javascript:void(0);"><i
+              class="ti-sm ti ti-users me-1_5"></i> Account</a></li>
+        <li class="nav-item"><a class="nav-link" href="@Url.Action("Security", "Account")"><i
+              class="ti-sm ti ti-lock me-1_5"></i> Security</a></li>
+        <li class="nav-item"><a class="nav-link" href="AccountSettingsBilling"><i
+              class="ti-sm ti ti-bookmark me-1_5"></i> Billing & Plans</a></li>
+        <li class="nav-item"><a class="nav-link" href="AccountSettingsNotifications"><i
+              class="ti-sm ti ti-bell me-1_5"></i> Notifications</a></li>
+        <li class="nav-item"><a class="nav-link" href="AccountSettingsConnections"><i
+              class="ti-sm ti ti-link me-1_5"></i> Connections</a></li>
       </ul>
     </div>
+
+    <!-- Loading Indicator -->
+    <div id="loading-indicator" style="display:flex; justify-content:center; padding:2rem;">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading user data...</span>
+      </div>
+    </div>
+
     <div class="card mb-6">
       <!-- Account -->
       <div class="card-body">
         <div class="d-flex align-items-start align-items-sm-center gap-6">
-          <img src="~/img/avatars/1.png" alt="user-avatar" class="d-block w-px-100 h-px-100 rounded" id="uploadedAvatar" />
+          <img src="~/img/avatars/1.png" alt="user-avatar" class="d-block w-px-100 h-px-100 rounded"
+            id="uploadedAvatar" />
           <div class="button-wrapper">
             <label for="upload" class="btn btn-primary me-3 mb-4" tabindex="0">
               <span class="d-none d-sm-block">Upload new photo</span>
@@ -73,43 +216,44 @@
       <div class="card-body pt-4">
         <form id="formAccountSettings" method="POST" action="@Url.Action("UpdateAccount", "Account")">
           @Html.AntiForgeryToken()
-          <input type="hidden" name="UserId" value="@Model?.UserId" />
+          <input type="hidden" name="UserId" id="UserId" value="@ViewBag.UserId" />
           <div class="row">
             <div class="mb-4 col-md-6">
               <label for="FirstName" class="form-label">First Name</label>
-              <input class="form-control" type="text" id="FirstName" name="FirstName" value="@Model?.FirstName" autofocus />
+              <input class="form-control" type="text" id="FirstName" name="FirstName" placeholder="Loading..." />
             </div>
             <div class="mb-4 col-md-6">
               <label for="LastName" class="form-label">Last Name</label>
-              <input class="form-control" type="text" name="LastName" id="LastName" value="@Model?.LastName" />
+              <input class="form-control" type="text" name="LastName" id="LastName" placeholder="Loading..." />
             </div>
             <div class="mb-4 col-md-6">
               <label for="Email" class="form-label">E-mail</label>
-              <input class="form-control" type="text" id="Email" name="Email" value="@Model?.Email" readonly />
+              <input class="form-control" type="text" id="Email" name="Email" placeholder="Loading..." readonly />
               <small class="text-muted">Email cannot be changed</small>
             </div>
             <div class="mb-4 col-md-6">
               <label for="organization" class="form-label">Organization</label>
-              <input type="text" class="form-control" id="organization" name="organization" value='@(ViewBag.AffiliateInfo?.Organization ?? "")' />
+              <input type="text" class="form-control" id="organization" name="organization"
+                placeholder="Organization" />
             </div>
             <div class="mb-4 col-md-6">
               <label class="form-label" for="PhoneNumber">Phone Number</label>
               <div class="input-group input-group-merge">
                 <span class="input-group-text">US (+1)</span>
-                <input type="text" id="PhoneNumber" name="PhoneNumber" class="form-control" value="@Model?.PhoneNumber" />
+                <input type="text" id="PhoneNumber" name="PhoneNumber" class="form-control" placeholder="Loading..." />
               </div>
             </div>
             <div class="mb-4 col-md-6">
               <label for="address" class="form-label">Address</label>
-              <input type="text" class="form-control" id="address" name="address" value="@(ViewBag.PrimaryAddress?.Line1 ?? "")" placeholder="Address" />
+              <input type="text" class="form-control" id="address" name="address" placeholder="Address" />
             </div>
             <div class="mb-4 col-md-6">
               <label for="state" class="form-label">State</label>
-              <input class="form-control" type="text" id="state" name="state" value="@(ViewBag.PrimaryAddress?.State ?? "")" placeholder="California" />
+              <input class="form-control" type="text" id="state" name="state" placeholder="California" />
             </div>
             <div class="mb-4 col-md-6">
               <label for="zipCode" class="form-label">Zip Code</label>
-                           <input type="text" class="form-control" id="zipCode" name="zipCode" value="@(ViewBag.PrimaryAddress?.ZipCode ?? "")" placeholder="231465" maxlength="6" />
+              <input type="text" class="form-control" id="zipCode" name="zipCode" placeholder="231465" maxlength="6" />
             </div>
           </div>
           <div class="mt-4">

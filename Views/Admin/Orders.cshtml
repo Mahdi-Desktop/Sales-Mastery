@@ -1,0 +1,223 @@
+@{
+    ViewData["Title"] = "Admin Orders";
+    Layout = "_ContentNavbarLayout";
+}
+
+@section VendorStyles {
+    <link rel="stylesheet" href="~/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/daterangepicker/daterangepicker.css" />
+}
+
+<div class="container-xxl flex-grow-1 container-p-y">
+@*     <h4 class="fw-bold py-3 mb-4">
+        <span class="text-muted fw-light">Admin /</span> Orders
+    </h4> *@
+
+    <!-- Orders List Card -->
+    <div class="card">
+        <div class="card-header border-bottom">
+            <h5 class="card-title mb-3">Order Management</h5>
+            <div class="d-flex justify-content-between align-items-center row pb-2 gap-3 gap-md-0">
+                <div class="col-md-4 user_role"></div>
+                <div class="col-md-4 user_plan"></div>
+                <div class="col-md-4 user_status"></div>
+            </div>
+        </div>
+        <div class="card-datatable table-responsive">
+            <table class="datatables-orders table border-top" id="ordersTable">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Customer</th>
+                        <th>Date</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data will be populated with JavaScript -->
+                    <tr>
+                        <td colspan="6" class="text-center">Loading orders...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section VendorScripts {
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+
+    <!-- DataTables & Libraries -->
+    <script src="~/vendor/libs/moment/moment.js"></script>
+    <script src="~/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+    <script src="~/vendor/libs/daterangepicker/daterangepicker.js"></script>
+}
+
+@section PageScripts {
+    <!-- Initialize Firebase -->
+    <script>
+        // Pass Firebase configuration from server to client
+        window.firebaseConfig = {
+            apiKey: "@ViewBag.FirebaseApiKey",
+            authDomain: "@ViewBag.FirebaseProjectId" + ".firebaseapp.com",
+            projectId: "@ViewBag.FirebaseProjectId",
+            storageBucket: "@ViewBag.FirebaseStorageBucket",
+            messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+            appId: "@ViewBag.FirebaseAppId"
+        };
+
+        // Set user context for access control
+        window.userContext = {
+            userId: "@ViewBag.UserId",
+            isAdmin: @(ViewBag.IsAdmin == "1" ? "true" : "false"),
+            isAffiliate: @(ViewBag.IsAffiliate == "1" ? "true" : "false"),
+            isCustomer: @(ViewBag.IsCustomer == "1" ? "true" : "false")
+            };
+    </script>
+
+    <!-- Load Firebase & Orders Logic -->
+    <script src="~/js/firebase-init.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize Firebase if needed
+            if (typeof initializeFirebase === 'function') {
+                initializeFirebase();
+            }
+
+            // Load Orders
+            document.addEventListener('firebase-ready', function (e) {
+                loadOrders(e.detail.db);
+            });
+
+            // If Firebase already initialized
+            if (window.db) {
+                loadOrders(window.db);
+            }
+        });
+
+        async function loadOrders(db) {
+            const tableBody = document.querySelector('#ordersTable tbody');
+            if (!tableBody) return;
+
+            try {
+                // Get all orders, sorted by date
+                const ordersSnapshot = await db.collection('orders').get();
+
+                if (ordersSnapshot.empty) {
+                    tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No orders found</td></tr>';
+                    return;
+                }
+
+                // Sort by date (newest first)
+                const orders = ordersSnapshot.docs.map(doc => {
+                    return {
+                        id: doc.id,
+                        data: doc.data()
+                    };
+                });
+
+                orders.sort((a, b) => {
+                    const dateA = a.data.createdAt || a.data.CreatedAt || { seconds: 0 };
+                    const dateB = b.data.createdAt || b.data.CreatedAt || { seconds: 0 };
+                    return dateB.seconds - dateA.seconds;
+                });
+
+                // Generate table rows
+                tableBody.innerHTML = '';
+
+                for (const order of orders) {
+                    const row = document.createElement('tr');
+
+                    // Get customer name
+                    let customerName = 'Unknown';
+                    const userId = order.data.userId || order.data.UserId;
+
+                    if (userId) {
+                        try {
+                            const userDoc = await db.collection('users').doc(userId).get();
+                            if (userDoc.exists) {
+                                const userData = userDoc.data();
+                                customerName = `${userData.FirstName || ''} ${userData.LastName || ''}`.trim() || userData.Email || 'Unknown';
+                            }
+                        } catch (error) {
+                            console.error('Error fetching user:', error);
+                        }
+                    }
+
+                    // Format date
+                    const createdAt = order.data.createdAt || order.data.CreatedAt;
+                    const date = createdAt ? createdAt.toDate().toLocaleDateString() : 'N/A';
+
+                    // Format total
+                    const total = order.data.total || order.data.TotalAmount || 0;
+                    const formattedTotal = '$' + parseFloat(total).toFixed(2);
+
+                    // Status badge
+                    const status = order.data.status || order.data.Status || 'Pending';
+                    let statusClass = 'bg-label-info';
+                    if (status.toLowerCase() === 'completed' || status.toLowerCase() === 'delivered') {
+                        statusClass = 'bg-label-success';
+                    } else if (status.toLowerCase() === 'processing') {
+                        statusClass = 'bg-label-warning';
+                    } else if (status.toLowerCase() === 'cancelled') {
+                        statusClass = 'bg-label-danger';
+                    }
+
+                    row.innerHTML = `
+                    <td><a href="/Admin/OrderDetails/${order.id}">#${order.id.substring(0, 8)}</a></td>
+                    <td>${customerName}</td>
+                    <td>${date}</td>
+                    <td>${formattedTotal}</td>
+                    <td><span class="badge ${statusClass}">${status}</span></td>
+                    <td>
+                      <div class="dropdown">
+                        <button type="button" class="btn btn-sm dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
+                          <i class="ti ti-dots-vertical"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                          <a class="dropdown-item" href="/Admin/OrderDetails/${order.id}">
+                            <i class="ti ti-eye me-1"></i> View
+                          </a>
+                          <a class="dropdown-item" href="javascript:void(0);" onclick="editOrderStatus('${order.id}')">
+                            <i class="ti ti-edit me-1"></i> Edit Status
+                          </a>
+                        </div>
+                      </div>
+                    </td>
+                  `;
+
+                    tableBody.appendChild(row);
+                }
+
+                // Initialize DataTables if available
+                if ($.fn.DataTable) {
+                    $('#ordersTable').DataTable({
+                        responsive: true,
+                        order: [[2, 'desc']], // Sort by date column
+                        pageLength: 10,
+                        language: {
+                            search: '',
+                            searchPlaceholder: 'Search orders'
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Failed to load orders</td></tr>';
+            }
+        }
+
+        function editOrderStatus(orderId) {
+            // Order status update logic would go here
+            alert('Status edit feature will be implemented soon for order ' + orderId);
+        }
+    </script>
+}

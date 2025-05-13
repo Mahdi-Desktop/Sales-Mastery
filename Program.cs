@@ -27,8 +27,8 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 });
 
 //builder.Configuration
-    //.SetBasePath(AppContext.BaseDirectory)
-    //.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+//.SetBasePath(AppContext.BaseDirectory)
+//.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
 // Connect to the database
 //builder.Services.AddDbContext<AspnetCoreMvcFullContext>(options =>
@@ -44,14 +44,27 @@ builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
 builder.Services.AddControllersWithViews();
 // Firebase app authentication setup
-var credentialsFileLocation = builder.Configuration.GetValue<string>("Firebase:ServiceAccountKeyPath");
+var contentRoot = builder.Environment.ContentRootPath;
+// Use a simple path directly in the root of the application
+var credentialsFileLocation = Path.Combine(contentRoot, "asp-sales-firebase-adminsdk-fbsvc-af622d93c2.json");
+
+// Check if credentials file exists
+if (!File.Exists(credentialsFileLocation))
+{
+  throw new FileNotFoundException(
+      $"Firebase credentials file not found at {credentialsFileLocation}. " +
+      $"Please place your Firebase Admin SDK JSON file in the root directory of your application."
+  );
+}
+
 var firebaseProjectName = builder.Configuration.GetValue<string>("Firebase:ProjectId");
-var firebaseApiKey = builder.Configuration.GetValue<string>("Firebase:ApiKey");
+var firebaseApiKey = "AIzaSyACWsakIQomRmJZShEOrXJ2z-XQOSr9Q5g";
 
 Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", credentialsFileLocation);
 builder.Services.AddSingleton(FirebaseApp.Create());
 // Add this after the FirebaseApp.Create() line
-builder.Services.AddSingleton(provider => {
+builder.Services.AddSingleton(provider =>
+{
   return FirestoreDb.Create(firebaseProjectName);
 });
 
@@ -141,7 +154,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 // In Program.cs or Startup.cs
 app.UseMiddleware<RedirectMiddleware>();
-  
+
 app.UseSession();
 
 app.Use(async (context, next) =>

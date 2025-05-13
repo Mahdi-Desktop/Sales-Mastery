@@ -1,0 +1,831 @@
+@{
+    ViewData["Title"] = "Order Details";
+    Layout = "_ContentNavbarLayout";
+}
+
+<div class="container-xxl flex-grow-1 container-p-y">
+@*     <h4 class="fw-bold py-3 mb-4">
+        <span class="text-muted fw-light">Admin / Orders /</span> Order Details
+    </h4> *@
+
+    <!-- Order Details Card -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Order Information</h5>
+            <div class="dropdown">
+                <button class="btn btn-primary dropdown-toggle" type="button" id="orderActionDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    Actions
+                </button>
+                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="orderActionDropdown">
+                    <button class="dropdown-item" id="updateStatusBtn">
+                        <i class="ti ti-edit me-1"></i>
+                        Update Status
+                    </button>
+                    <button class="dropdown-item" id="printInvoiceBtn">
+                        <i class="ti ti-printer me-1"></i>
+                        Print Invoice
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h6 class="mb-0">Order ID: <span id="orderId">Loading...</span></h6>
+                    <p class="mb-0">Date: <span id="orderDate">Loading...</span></p>
+                </div>
+                <div>
+                    <span id="statusBadge" class="badge bg-label-primary">Loading...</span>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h6 class="mb-2">Customer Information</h6>
+                    <div class="border rounded p-3">
+                        <p class="mb-1" id="customerName">Loading...</p>
+                        <p class="mb-1" id="customerEmail">Loading...</p>
+                        <p class="mb-0" id="customerPhone">Loading...</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="mb-2">Shipping Address</h6>
+                    <div class="border rounded p-3" id="shippingAddress">
+                        Loading...
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 250px;">Product</th>
+                            <th>SKU</th>
+                            <th>Category</th>
+                            <th>Brand</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Subtotal</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderItemsBody">
+                        <tr>
+                            <td colspan="8" class="text-center">Loading order items...</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="7" class="text-end fw-bold">Subtotal:</td>
+                            <td id="subtotal">$0.00</td>
+                        </tr>
+                        <tr>
+                            <td colspan="7" class="text-end fw-bold">Shipping Fee:</td>
+                            <td id="shippingFee">$0.00</td>
+                        </tr>
+                        <tr>
+                            <td colspan="7" class="text-end fw-bold">Total:</td>
+                            <td id="totalAmount" class="fw-bold">$0.00</td>
+                        </tr>
+                        <tr id="commissionRow">
+                            <td colspan="7" class="text-end fw-bold">Affiliate Commission:</td>
+                            <td id="commission" class="fw-bold">$0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <h6 class="mb-2">Payment Information</h6>
+                    <div class="border rounded p-3">
+                        <p class="mb-1">Payment Method: <span id="paymentMethod">Loading...</span></p>
+                        <p class="mb-0">Payment Status: <span id="paymentStatus">Loading...</span></p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="mb-2">Notes</h6>
+                    <div class="border rounded p-3" id="orderNotes">
+                        No notes available.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Status History Card -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Order Status History</h5>
+        </div>
+        <div class="card-body">
+            <ul class="timeline" id="statusTimeline">
+                <li class="timeline-item">
+                    <span class="timeline-indicator timeline-indicator-primary">
+                        <i class="ti ti-shopping-cart"></i>
+                    </span>
+                    <div class="timeline-event">
+                        <div class="timeline-header">
+                            <h6 class="mb-0">Order Created</h6>
+                            <small class="text-muted" id="orderCreatedDate">Loading...</small>
+                        </div>
+                        <p class="mb-0">Order was placed by customer</p>
+                    </div>
+                </li>
+                <!-- Additional status events will be added via JavaScript -->
+            </ul>
+        </div>
+    </div>
+
+    <!-- Order Status Update Modal -->
+    <div class="modal fade" id="updateStatusModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Update Order Status</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="orderStatus">Status</label>
+                        <select class="form-select" id="orderStatus">
+                            <option value="Pending">Pending</option>
+                            <option value="Processing">Processing</option>
+                            <option value="Shipped">Shipped</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
+                            <option value="Refunded">Refunded</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="statusNotes">Notes (Optional)</label>
+                        <textarea class="form-control" id="statusNotes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveStatusBtn">Save Status</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Details Modal -->
+    <div class="modal fade" id="productDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Product Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-3 mb-md-0">
+                            <img id="productImage" src="https://via.placeholder.com/200" class="img-fluid rounded" alt="Product Image">
+                        </div>
+                        <div class="col-md-8">
+                            <h4 id="productName" class="mb-2">Loading...</h4>
+                            <p id="productDescription" class="mb-3 text-muted">Loading product details...</p>
+
+                            <div class="mb-2">
+                                <strong>SKU:</strong> <span id="productSku">-</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>Price:</strong> <span id="productPrice">-</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>Stock:</strong> <span id="productStock">-</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>Category:</strong> <span id="productCategory">-</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>Brand:</strong> <span id="productBrand">-</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>Commission Rate:</strong> <span id="productCommission">-</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>Created:</strong> <span id="productCreatedAt">-</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>Last Updated:</strong> <span id="productUpdatedAt">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Close</button>
+                    <a id="editProductLink" href="#" class="btn btn-primary">Edit Product</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Firebase Scripts -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+@section VendorScripts {
+        <script src="~/vendor/libs/moment/moment.js"></script>
+}
+
+@section PageScripts {
+        <!-- Initialize Firebase -->
+        <script>
+            // Pass Firebase configuration from server to client
+            window.firebaseConfig = {
+                apiKey: "@ViewBag.FirebaseApiKey",
+                authDomain: "@ViewBag.FirebaseProjectId" + ".firebaseapp.com",
+                projectId: "@ViewBag.FirebaseProjectId",
+                storageBucket: "@ViewBag.FirebaseStorageBucket",
+                messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+                appId: "@ViewBag.FirebaseAppId"
+            };
+
+            // Set user context for access control
+            window.userContext = {
+                userId: "@ViewBag.UserId",
+                isAdmin: @(ViewBag.IsAdmin == "1" ? "true" : "false"),
+                isAffiliate: @(ViewBag.IsAffiliate == "1" ? "true" : "false"),
+                isCustomer: @(ViewBag.IsCustomer == "1" ? "true" : "false")
+            };
+
+            // Get order ID from URL
+            const urlParams = window.location.pathname.split('/');
+            const orderId = urlParams[urlParams.length - 1];
+        </script>
+
+        <script>
+            let db;
+            let order;
+            let orderItems = [];
+            let customer;
+
+            document.addEventListener('DOMContentLoaded', function () {
+                // Initialize Firebase
+                if (typeof firebase === 'undefined') {
+                    console.error('Firebase SDK not loaded');
+                    return;
+                }
+
+                try {
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(window.firebaseConfig);
+                    }
+                    db = firebase.firestore();
+
+                    // Load order details
+                    loadOrderDetails(orderId);
+
+                    // Set up event listeners
+                    setupEventListeners();
+                } catch (error) {
+                    console.error('Error initializing Firebase:', error);
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Failed to connect to database. Please try again later.',
+                        icon: 'error'
+                    });
+                }
+            });
+
+            function setupEventListeners() {
+                // Update Status button
+                document.getElementById('updateStatusBtn').addEventListener('click', function() {
+                    const modal = new bootstrap.Modal(document.getElementById('updateStatusModal'));
+                    modal.show();
+                });
+
+                // Save Status button
+                document.getElementById('saveStatusBtn').addEventListener('click', function() {
+                    updateOrderStatus();
+                });
+
+                // Print Invoice button
+                document.getElementById('printInvoiceBtn').addEventListener('click', function() {
+                    window.print();
+                });
+
+                // Handle product details modal
+                document.getElementById('productDetailsModal').addEventListener('show.bs.modal', function(event) {
+                    const button = event.relatedTarget; // Button that triggered the modal
+                    const productId = button.getAttribute('data-product-id'); // Extract product ID
+
+                    console.log('Product ID from button:', productId);
+
+                    if (productId && productId !== 'null' && productId !== 'undefined') {
+                        loadProductDetails(productId);
+                    } else {
+                        console.error('No valid product ID provided:', productId);
+                        document.getElementById('productName').textContent = 'Product Information Unavailable';
+                        document.getElementById('productDescription').textContent = 'No product ID was found for this item.';
+                        // Disable edit button when no product ID
+                        document.getElementById('editProductLink').style.display = 'none';
+                    }
+                });
+            }
+
+            async function loadOrderDetails(orderId) {
+                try {
+                    // Get order document
+                    const orderDoc = await db.collection('orders').doc(orderId).get();
+
+                    if (!orderDoc.exists) {
+                        Swal.fire({
+                            title: 'Not Found',
+                            text: 'Order not found',
+                            icon: 'error'
+                        }).then(() => {
+                            window.location.href = '/Admin/Orders';
+                        });
+                        return;
+                    }
+
+                    // Store order data
+                    order = orderDoc.data();
+                    order.id = orderDoc.id;
+
+                    // Update order information
+                    document.getElementById('orderId').textContent = `#${orderId.substring(0, 8)}`;
+
+                    const createdAt = order.CreatedAt || order.OrderDate;
+                    document.getElementById('orderDate').textContent = createdAt ? formatDate(createdAt.toDate()) : 'Unknown';
+                    document.getElementById('orderCreatedDate').textContent = createdAt ? formatDate(createdAt.toDate()) : 'Unknown';
+
+                    // Set status badge
+                    const status = order.Status || 'Pending';
+                    const statusBadge = document.getElementById('statusBadge');
+                    statusBadge.textContent = status;
+
+                    // Set status badge color
+                    if (status === 'Completed' || status === 'Delivered') {
+                        statusBadge.className = 'badge bg-label-success';
+                    } else if (status === 'Pending') {
+                        statusBadge.className = 'badge bg-label-warning';
+                    } else if (status === 'Cancelled' || status === 'Refunded') {
+                        statusBadge.className = 'badge bg-label-danger';
+                    } else {
+                        statusBadge.className = 'badge bg-label-info';
+                    }
+
+                    // Set current status in dropdown
+                    document.getElementById('orderStatus').value = status;
+
+                    // Get customer details
+                    const userId = order.UserId;
+                    if (userId) {
+                        const userDoc = await db.collection('users').doc(userId).get();
+                        if (userDoc.exists) {
+                            customer = userDoc.data();
+                            customer.id = userDoc.id;
+
+                            document.getElementById('customerName').textContent = `${customer.FirstName || ''} ${customer.LastName || ''}`.trim() || 'Unknown';
+                            document.getElementById('customerEmail').textContent = customer.Email || 'N/A';
+                            document.getElementById('customerPhone').textContent = customer.PhoneNumber || 'N/A';
+                        }
+                    }
+
+                    // Display shipping address
+                    const shippingAddress = order.ShippingAddress;
+                    if (shippingAddress) {
+                        // Handle different possible formats of shipping address
+                        if (typeof shippingAddress === 'string') {
+                            document.getElementById('shippingAddress').textContent = shippingAddress;
+                        } else {
+                            const addressParts = [];
+
+                            if (shippingAddress.Line1) addressParts.push(shippingAddress.Line1);
+                            if (shippingAddress.Line2) addressParts.push(shippingAddress.Line2);
+                            if (shippingAddress.City) addressParts.push(shippingAddress.City);
+                            if (shippingAddress.State) addressParts.push(shippingAddress.State);
+                            if (shippingAddress.ZipCode) addressParts.push(shippingAddress.ZipCode);
+                            if (shippingAddress.Country) addressParts.push(shippingAddress.Country);
+
+                            document.getElementById('shippingAddress').textContent = addressParts.join(', ') || 'N/A';
+                        }
+                    }
+
+                    // Display payment information
+                    document.getElementById('paymentMethod').textContent = order.PaymentMethod || 'N/A';
+                    document.getElementById('paymentStatus').textContent = order.PaymentStatus || (status === 'Completed' ? 'Paid' : 'Pending');
+
+                    // Load order items
+                    await loadOrderItems(orderId);
+
+                    // Calculate and display totals
+                    let subtotal = 0;
+                    let commission = 0;
+
+                    orderItems.forEach(item => {
+                        subtotal += item.SubTotal || (item.Price * item.Quantity) || 0;
+                    });
+
+                    const shippingFee = parseFloat(order.ShippingFee || 0);
+                    const total = parseFloat(order.TotalAmount || subtotal + shippingFee);
+
+                    // If there's an affiliate, show commission
+                    if (order.Commission) {
+                        commission = parseFloat(order.Commission);
+                        document.getElementById('commission').textContent = formatCurrency(commission);
+                    } else {
+                        document.getElementById('commissionRow').style.display = 'none';
+                    }
+
+                    document.getElementById('subtotal').textContent = formatCurrency(subtotal);
+                    document.getElementById('shippingFee').textContent = formatCurrency(shippingFee);
+                    document.getElementById('totalAmount').textContent = formatCurrency(total);
+
+                    // Load order notes
+                    if (order.Notes) {
+                        document.getElementById('orderNotes').textContent = order.Notes;
+                    }
+
+                } catch (error) {
+                    console.error('Error loading order details:', error);
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Failed to load order details',
+                        icon: 'error'
+                    });
+                }
+            }
+
+            async function loadOrderItems(orderId) {
+                try {
+                    const itemsTableBody = document.getElementById('orderItemsBody');
+                    itemsTableBody.innerHTML = '<tr><td colspan="8" class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div> Loading order items...</td></tr>';
+
+                    // First try to get order details from orderDetails collection (note the corrected spelling)
+                    const itemsSnapshot = await db.collection('orderDetails').where('OrderId', '==', orderId).get();
+
+                    let hasItems = false;
+
+                    if (!itemsSnapshot.empty) {
+                        // We have orderDetails collection data
+                        console.log('Found items in orderDetails collection:', itemsSnapshot.size);
+                        orderItems = [];
+
+                        // Process each order detail and fetch product information
+                        for (const doc of itemsSnapshot.docs) {
+                            const itemData = doc.data();
+                            console.log('Processing orderDetail item:', itemData);
+                            let productData = null;
+                            let categoryName = 'N/A';
+                            let brandName = 'N/A';
+
+                            // Try to get product details if ProductId is available
+                            if (itemData.ProductId) {
+                                console.log('Found ProductId:', itemData.ProductId);
+                                try {
+                                    const productDoc = await db.collection('products').doc(itemData.ProductId).get();
+                                    if (productDoc.exists) {
+                                        productData = productDoc.data();
+
+                                        // Get category name
+                                        if (productData.CategoryId) {
+                                            try {
+                                                const categoryDoc = await db.collection('categories').doc(productData.CategoryId).get();
+                                                if (categoryDoc.exists) {
+                                                    categoryName = categoryDoc.data().Name || 'Unknown Category';
+                                                }
+                                            } catch (err) {
+                                                console.warn('Could not fetch category details:', err);
+                                            }
+                                        }
+
+                                        // Get brand name
+                                        if (productData.BrandId) {
+                                            try {
+                                                const brandDoc = await db.collection('brands').doc(productData.BrandId).get();
+                                                if (brandDoc.exists) {
+                                                    brandName = brandDoc.data().Name || 'Unknown Brand';
+                                                }
+                                            } catch (err) {
+                                                console.warn('Could not fetch brand details:', err);
+                                            }
+                                        }
+                                    }
+                                } catch (err) {
+                                    console.warn('Could not fetch product details:', err);
+                                }
+                            }
+
+                            // Merge product data with order item data
+                            const enrichedItem = {
+                                ...itemData,
+                                ProductName: itemData.ProductName || (productData ? productData.Name : 'Unknown Product'),
+                                SKU: itemData.SKU || (productData ? productData.SKU : 'N/A'),
+                                Image: productData ? productData.Image : null,
+                                Description: productData ? productData.Description : '',
+                                BrandId: productData ? productData.BrandId : null,
+                                CategoryId: productData ? productData.CategoryId : null,
+                                CategoryName: categoryName,
+                                BrandName: brandName,
+                                Price: parseFloat(itemData.Price || (productData ? productData.Price : 0)),
+                                Quantity: parseInt(itemData.Quantity || 1),
+                                SubTotal: parseFloat(itemData.SubTotal || 0),
+                                ProductId: itemData.ProductId || null // Ensure ProductId is always included
+                            };
+
+                            // Calculate subtotal if not provided
+                            if (!enrichedItem.SubTotal) {
+                                enrichedItem.SubTotal = enrichedItem.Price * enrichedItem.Quantity;
+                            }
+
+                            orderItems.push(enrichedItem);
+                        }
+                        hasItems = true;
+                    } else if (order.Items && Array.isArray(order.Items)) {
+                        // Fall back to Items array in the order document
+                        console.log('Using items array from order document');
+                        orderItems = [];
+
+                        // Process each item in the order Items array and try to fetch additional details
+                        for (const item of order.Items) {
+                            console.log('Processing order.Items item:', item);
+                            let productData = null;
+                            let categoryName = 'N/A';
+                            let brandName = 'N/A';
+
+                            // Try to get product details if ProductId is available
+                            if (item.ProductId) {
+                                console.log('Found ProductId in order item:', item.ProductId);
+                                try {
+                                    const productDoc = await db.collection('products').doc(item.ProductId).get();
+                                    if (productDoc.exists) {
+                                        productData = productDoc.data();
+
+                                        // Get category name
+                                        if (productData.CategoryId) {
+                                            try {
+                                                const categoryDoc = await db.collection('categories').doc(productData.CategoryId).get();
+                                                if (categoryDoc.exists) {
+                                                    categoryName = categoryDoc.data().Name || 'Unknown Category';
+                                                }
+                                            } catch (err) {
+                                                console.warn('Could not fetch category details:', err);
+                                            }
+                                        }
+
+                                        // Get brand name
+                                        if (productData.BrandId) {
+                                            try {
+                                                const brandDoc = await db.collection('brands').doc(productData.BrandId).get();
+                                                if (brandDoc.exists) {
+                                                    brandName = brandDoc.data().Name || 'Unknown Brand';
+                                                }
+                                            } catch (err) {
+                                                console.warn('Could not fetch brand details:', err);
+                                            }
+                                        }
+                                    }
+                                } catch (err) {
+                                    console.warn('Could not fetch product details:', err);
+                                }
+                            }
+
+                            // Merge product data with order item data
+                            const enrichedItem = {
+                                ...item,
+                                ProductName: item.ProductName || (productData ? productData.Name : 'Unknown Product'),
+                                SKU: item.SKU || (productData ? productData.SKU : 'N/A'),
+                                Image: productData ? productData.Image : (item.Image || null),
+                                Description: productData ? productData.Description : (item.Description || ''),
+                                CategoryName: categoryName,
+                                BrandName: brandName,
+                                Price: parseFloat(item.Price || (productData ? productData.Price : 0)),
+                                Quantity: parseInt(item.Quantity || 1),
+                                ProductId: item.ProductId || null // Ensure ProductId is always included
+                            };
+
+                            // Calculate subtotal if not provided
+                            if (!enrichedItem.SubTotal) {
+                                enrichedItem.SubTotal = enrichedItem.Price * enrichedItem.Quantity;
+                            }
+
+                            orderItems.push(enrichedItem);
+                        }
+                        hasItems = true;
+                    }
+
+                    // If we couldn't find any items, show a message
+                    if (!hasItems || orderItems.length === 0) {
+                        itemsTableBody.innerHTML = '<tr><td colspan="8" class="text-center">No items found for this order</td></tr>';
+                        return;
+                    }
+
+                    // Populate order items table with enhanced information
+                    itemsTableBody.innerHTML = '';
+
+                    console.log(`Found ${orderItems.length} order items to display`, orderItems);
+
+                    for (const item of orderItems) {
+                        const row = document.createElement('tr');
+
+                        const price = parseFloat(item.Price || 0);
+                        const quantity = parseInt(item.Quantity || 0);
+                        const subtotal = parseFloat(item.SubTotal || price * quantity);
+
+                        // Create a richer product display with image if available
+                        let productDisplay = item.ProductName || 'Unknown Product';
+                        if (item.Image) {
+                            productDisplay = `
+                                <div class="d-flex align-items-center">
+                                    <img src="${item.Image}" class="rounded me-2" width="40" height="40" alt="${item.ProductName}" onerror="this.src='https://via.placeholder.com/40'">
+                                    <div>
+                                        <h6 class="mb-0">${item.ProductName}</h6>
+                                        <small class="text-muted">${item.Description ? item.Description.substring(0, 50) + (item.Description.length > 50 ? '...' : '') : ''}</small>
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        // Create action button based on whether we have a valid product ID
+                        let actionButton = '<span class="text-muted">No details</span>';
+                        if (item.ProductId) {
+                            actionButton = `
+                                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#productDetailsModal" data-product-id="${item.ProductId}">
+                                    <i class="ti ti-eye me-1"></i> View
+                                </button>
+                            `;
+                        }
+
+                        row.innerHTML = `
+                            <td>${productDisplay}</td>
+                            <td>${item.SKU || 'N/A'}</td>
+                            <td>${item.CategoryName || 'N/A'}</td>
+                            <td>${item.BrandName || 'N/A'}</td>
+                            <td>${quantity}</td>
+                            <td>${formatCurrency(price)}</td>
+                            <td>${formatCurrency(subtotal)}</td>
+                            <td>${actionButton}</td>
+                        `;
+
+                        itemsTableBody.appendChild(row);
+                    }
+                } catch (error) {
+                    console.error('Error loading order items:', error);
+                    document.getElementById('orderItemsBody').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error loading order items</td></tr>';
+                }
+            }
+
+            async function updateOrderStatus() {
+                try {
+                    const status = document.getElementById('orderStatus').value;
+                    const notes = document.getElementById('statusNotes').value;
+
+                    // Show loading
+                    Swal.fire({
+                        title: 'Updating...',
+                        didOpen: () => {
+                            Swal.showLoading();
+                        },
+                        allowOutsideClick: false
+                    });
+
+                    // Update order status
+                    await db.collection('orders').doc(orderId).update({
+                        Status: status,
+                        Notes: notes ? notes : order.Notes,
+                        UpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    // Close modal
+                    bootstrap.Modal.getInstance(document.getElementById('updateStatusModal')).hide();
+
+                    // Show success message
+                    Swal.fire({
+                        title: 'Success',
+                        text: 'Order status updated successfully',
+                        icon: 'success'
+                    }).then(() => {
+                        // Reload the page to show updated status
+                        window.location.reload();
+                    });
+                } catch (error) {
+                    console.error('Error updating order status:', error);
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Failed to update order status',
+                        icon: 'error'
+                    });
+                }
+            }
+
+            // Utility function to format date
+            function formatDate(date) {
+                if (!date) return 'N/A';
+
+                const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+                return date.toLocaleString(undefined, options);
+            }
+
+            // Utility function to format currency
+            function formatCurrency(amount) {
+                return '$' + parseFloat(amount).toFixed(2);
+            }
+
+            // Function to load product details for the modal
+            async function loadProductDetails(productId) {
+                try {
+                    // Show the edit button by default (we might hide it in error cases)
+                    document.getElementById('editProductLink').style.display = 'inline-block';
+
+                    // Reset modal content
+                    document.getElementById('productImage').src = 'https://via.placeholder.com/200';
+                    document.getElementById('productName').textContent = 'Loading...';
+                    document.getElementById('productDescription').textContent = 'Loading product details...';
+                    document.getElementById('productSku').textContent = '-';
+                    document.getElementById('productPrice').textContent = '-';
+                    document.getElementById('productStock').textContent = '-';
+                    document.getElementById('productCategory').textContent = '-';
+                    document.getElementById('productBrand').textContent = '-';
+                    document.getElementById('productCommission').textContent = '-';
+                    document.getElementById('productCreatedAt').textContent = '-';
+                    document.getElementById('productUpdatedAt').textContent = '-';
+
+                    // Validate product ID
+                    if (!productId) {
+                        throw new Error('Invalid product ID');
+                    }
+
+                    console.log('Fetching product details for ID:', productId);
+
+                    // Get product from Firestore
+                    const productDoc = await db.collection('products').doc(productId).get();
+
+                    if (!productDoc.exists) {
+                        document.getElementById('productName').textContent = 'Product Not Found';
+                        document.getElementById('productDescription').textContent = 'This product no longer exists in the database.';
+                        document.getElementById('editProductLink').style.display = 'none';
+                        return;
+                    }
+
+                    const product = productDoc.data();
+                    console.log('Product data retrieved:', product ? 'success' : 'empty data');
+
+                    // Update modal with product details
+                    document.getElementById('productName').textContent = product.Name || 'No Name';
+                    document.getElementById('productDescription').textContent = product.Description || 'No description available';
+                    document.getElementById('productSku').textContent = product.SKU || 'N/A';
+                    document.getElementById('productPrice').textContent = formatCurrency(product.Price || 0);
+                    document.getElementById('productStock').textContent = product.Stock !== undefined ? product.Stock : 'N/A';
+                    document.getElementById('productCommission').textContent = product.Commission ? `${product.Commission}%` : 'N/A';
+
+                    if (product.Image) {
+                        document.getElementById('productImage').src = product.Image;
+                        document.getElementById('productImage').onerror = function() {
+                            this.src = 'https://via.placeholder.com/200';
+                        };
+                    }
+
+                    // Set created/updated timestamps
+                    if (product.CreatedAt) {
+                        document.getElementById('productCreatedAt').textContent = formatDate(product.CreatedAt.toDate());
+                    }
+
+                    if (product.UpdatedAt) {
+                        document.getElementById('productUpdatedAt').textContent = formatDate(product.UpdatedAt.toDate());
+                    }
+
+                    // Update edit link
+                    document.getElementById('editProductLink').href = `/Admin/Products/Edit/${productId}`;
+
+                    // Get and display category
+                    if (product.CategoryId) {
+                        try {
+                            const categoryDoc = await db.collection('categories').doc(product.CategoryId).get();
+                            if (categoryDoc.exists) {
+                                document.getElementById('productCategory').textContent = categoryDoc.data().Name || 'Unknown Category';
+                            }
+                        } catch (err) {
+                            console.warn('Could not fetch category:', err);
+                        }
+                    }
+
+                    // Get and display brand
+                    if (product.BrandId) {
+                        try {
+                            const brandDoc = await db.collection('brands').doc(product.BrandId).get();
+                            if (brandDoc.exists) {
+                                document.getElementById('productBrand').textContent = brandDoc.data().Name || 'Unknown Brand';
+                            }
+                        } catch (err) {
+                            console.warn('Could not fetch brand:', err);
+                        }
+                    }
+
+                } catch (error) {
+                    console.error('Error loading product details:', error);
+                    document.getElementById('productName').textContent = 'Error';
+                    document.getElementById('productDescription').textContent = 'Failed to load product details: ' + error.message;
+                    document.getElementById('editProductLink').style.display = 'none';
+                }
+            }
+        </script>
+}

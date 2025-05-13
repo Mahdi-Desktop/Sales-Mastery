@@ -1,0 +1,225 @@
+@using Microsoft.AspNetCore.Http
+@inject IHttpContextAccessor HttpContextAccessor
+
+@{
+  ViewData["Title"] = "Customer Dashboard";
+}
+
+@section VendorStyles {
+  <link rel="stylesheet" href="~/vendor/libs/apex-charts/apex-charts.css" />
+  <link rel="stylesheet" href="~/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
+  <link rel="stylesheet" href="~/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+  <link rel="stylesheet" href="~/vendor/libs/flatpickr/flatpickr.css" />
+}
+
+@section VendorScripts {
+  <!-- Make sure jQuery is loaded first -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="~/vendor/libs/apex-charts/apexcharts.js"></script>
+  <script src="~/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+  <script src="~/vendor/libs/flatpickr/flatpickr.js"></script>
+  <script src="~/vendor/libs/typeahead-js/typeahead.js"></script>
+
+  <!-- Firebase scripts -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+}
+
+<!-- Firebase configuration -->
+<script>
+  // Pass Firebase configuration from server to client
+  window.firebaseConfig = {
+    apiKey: "@ViewBag.FirebaseApiKey",
+    authDomain: "@ViewBag.FirebaseProjectId" + ".firebaseapp.com",
+    projectId: "@ViewBag.FirebaseProjectId",
+    storageBucket: "@ViewBag.FirebaseStorageBucket",
+    messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+    appId: "@ViewBag.FirebaseAppId"
+  };
+
+  // Set user context for access control
+  window.userContext = {
+    userId: "@ViewBag.UserId",
+    isAdmin: "@ViewBag.IsAdmin" === "1",
+    isAffiliate: "@ViewBag.IsAffiliate" === "1",
+    isCustomer: "@ViewBag.IsCustomer" === "1"
+  };
+</script>
+
+<!-- Customer Dashboard Content -->
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="card-title">Welcome to Your Dashboard</h5>
+      </div>
+      <div class="card-body">
+        <h3 id="customerGreeting">Hello, Customer!</h3>
+        <p>Welcome to your customer dashboard. Here you can view your orders, track shipments, and manage your
+          account.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order History -->
+  <div class="col-12 mt-4">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between">
+        <div>
+          <h5 class="card-title mb-0">Recent Orders</h5>
+        </div>
+        <a href="/Customer/Orders" class="btn btn-sm btn-primary">View All Orders</a>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover" id="customerOrdersTable">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="5" class="text-center">Loading your orders...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    console.log("Customer dashboard loaded");
+
+    // Simple Firebase initialization for the customer dashboard
+    if (typeof firebase !== 'undefined') {
+      try {
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+          firebase.initializeApp(window.firebaseConfig);
+        }
+
+        // Get Firestore instance
+        const db = firebase.firestore();
+
+        // Load customer's name and update greeting
+        loadCustomerInfo(db);
+
+        // Load customer's orders
+        loadCustomerOrders(db);
+      } catch (error) {
+        console.error("Error initializing Firebase:", error);
+      }
+    } else {
+      console.error("Firebase is not defined. Make sure Firebase scripts are loaded.");
+    }
+  });
+
+  // Function to load customer info and update greeting
+  async function loadCustomerInfo(db) {
+    const userId = window.userContext.userId;
+    if (!userId) return;
+
+    try {
+      // Get customer document from Firestore
+      const customerDoc = await db.collection('users').doc(userId).get();
+
+      if (customerDoc.exists) {
+        const customerData = customerDoc.data();
+        const firstName = customerData.FirstName || '';
+        const lastName = customerData.LastName || '';
+
+        // Build customer name - use first name if available, or full name
+        let customerName = firstName;
+        if (!customerName && lastName) {
+          customerName = lastName;
+        } else if (firstName && lastName) {
+          customerName = `${firstName}`;
+        }
+
+        // Update the greeting if we have a name
+        if (customerName) {
+          const greetingElement = document.getElementById('customerGreeting');
+          if (greetingElement) {
+            greetingElement.textContent = `Hello, ${customerName}!`;
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error loading customer info:", error);
+    }
+  }
+
+  // Function to load customer orders
+  async function loadCustomerOrders(db) {
+    const userId = window.userContext.userId;
+    if (!userId) return;
+
+    const table = document.getElementById('customerOrdersTable');
+    if (!table) return;
+
+    const tbody = table.querySelector('tbody');
+
+    try {
+      // Get customer's orders without requiring composite index
+      // Option 1: Remove the orderBy clause
+      const ordersSnapshot = await db.collection('orders')
+        .where('userId', '==', userId)
+        .limit(5)
+        .get();
+
+      if (ordersSnapshot.empty) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">No orders found. Start shopping now!</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = '';
+      // Sort the results on the client side
+      const orders = [];
+      ordersSnapshot.forEach(doc => {
+        orders.push({ id: doc.id, data: doc.data() });
+      });
+
+      // Sort by createdAt if available
+      orders.sort((a, b) => {
+        if (!a.data.createdAt || !b.data.createdAt) return 0;
+        return b.data.createdAt.seconds - a.data.createdAt.seconds;
+      });
+
+      orders.forEach(order => {
+        const row = document.createElement('tr');
+
+        // Create status badge
+        let statusClass = 'bg-label-info';
+        if (order.data.status === 'Completed') statusClass = 'bg-label-success';
+        else if (order.data.status === 'Processing') statusClass = 'bg-label-warning';
+        else if (order.data.status === 'Cancelled') statusClass = 'bg-label-danger';
+
+        row.innerHTML = `
+                    <td><a href="/Customer/Orders/Details/${order.id}">#${order.id.substring(0, 8)}</a></td>
+                    <td>${order.data.createdAt ? new Date(order.data.createdAt.toDate()).toLocaleDateString() : 'N/A'}</td>
+                    <td>$${parseFloat(order.data.total || 0).toFixed(2)}</td>
+                    <td><span class="badge ${statusClass}">${order.data.status || 'Pending'}</span></td>
+                    <td>
+                        <a href="/Customer/Orders/Details/${order.id}" class="btn btn-sm btn-outline-primary">
+                            <i class="ti ti-eye"></i> View
+                        </a>
+                    </td>
+                `;
+        tbody.appendChild(row);
+      });
+    } catch (error) {
+      console.error("Error loading customer orders:", error);
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading orders. Please try again later.</td></tr>';
+    }
+  }
+</script>

@@ -1,0 +1,877 @@
+@{
+    ViewData["Title"] = "Admin Products";
+    Layout = "_ContentNavbarLayout";
+}
+
+@section VendorStyles {
+    <link rel="stylesheet" href="~/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+    <link rel="stylesheet" href="~/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css" />
+}
+
+<div class="container-xxl flex-grow-1 container-p-y">
+@*     <h4 class="fw-bold py-3 mb-4">
+        <span class="text-muted fw-light">Admin /</span> Products
+    </h4> *@
+
+    <!-- Products List Card -->
+    <div class="card">
+        <div class="card-header border-bottom">
+            <h5 class="card-title mb-3">Product Management</h5>
+            <div class="d-flex justify-content-between align-items-center row pb-2 gap-3 gap-md-0">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="searchProduct" placeholder="Search product...">
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" id="brandFilter">
+                        <option value="">All Brands</option>
+                        <!-- Brands will be added by JavaScript -->
+                    </select>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button type="button" class="btn btn-primary" id="addProductBtn">
+                        <i class="ti ti-plus me-1"></i>Add New Product
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-datatable table-responsive">
+            <table class="datatables-products table border-top" id="productsTable">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Brand</th>
+                        <th>SKU</th>
+                        <th>Price</th>
+                        <th>Stock</th>
+                        <th>Commission</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data will be populated with JavaScript -->
+                    <tr>
+                        <td colspan="7" class="text-center">Loading products...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add/Edit Product Modal -->
+    <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Add New Product</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="productForm">
+                        <input type="hidden" id="productId">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="productName" class="form-label">Product Name</label>
+                                <input type="text" id="productName" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="sku" class="form-label">SKU</label>
+                                <input type="text" id="sku" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="brandId" class="form-label">Brand</label>
+                                <select id="brandId" class="form-select" required>
+                                    <option value="">Select Brand</option>
+                                    <!-- Brands will be added by JavaScript -->
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="categoryId" class="form-label">Category</label>
+                                <select id="categoryId" class="form-select" required>
+                                    <option value="">Select Category</option>
+                                    <!-- Categories will be added by JavaScript -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="price" class="form-label">Price ($)</label>
+                                <input type="number" id="price" class="form-control" min="0" step="0.01" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="stock" class="form-label">Stock</label>
+                                <input type="number" id="stock" class="form-control" min="0" step="1" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="commission" class="form-label">Commission ($)</label>
+                                <input type="number" id="commission" class="form-control" min="0" step="0.01">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea id="description" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="imageUrl" class="form-label">Image URL</label>
+                            <input type="text" id="imageUrl" class="form-control">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="saveProduct">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Brand Management Modal -->
+    <div class="modal fade" id="brandModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Brand Management</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="brandName" class="form-label">Brand Name</label>
+                        <div class="input-group">
+                            <input type="text" id="brandName" class="form-control" required>
+                            <button class="btn btn-primary" type="button" id="addBrandBtn">Add</button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="defaultCommission" class="form-label">Default Commission Rate (%)</label>
+                        <input type="number" id="defaultCommission" class="form-control" min="0" max="100" step="0.01" value="10">
+                    </div>
+                    <hr>
+                    <h6 class="mb-3">Existing Brands</h6>
+                    <ul class="list-group mb-3" id="brandsList">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Loading brands...</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Firebase Scripts -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+
+@section VendorScripts {
+    <script src="~/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+}
+
+@section PageScripts {
+    <!-- Initialize Firebase -->
+    <script>
+        // Pass Firebase configuration from server to client
+        window.firebaseConfig = {
+            apiKey: "@ViewBag.FirebaseApiKey",
+            authDomain: "@ViewBag.FirebaseProjectId" + ".firebaseapp.com",
+            projectId: "@ViewBag.FirebaseProjectId",
+            storageBucket: "@ViewBag.FirebaseStorageBucket",
+            messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+            appId: "@ViewBag.FirebaseAppId"
+        };
+
+        // Set user context for access control
+        window.userContext = {
+            userId: "@ViewBag.UserId",
+            isAdmin: @(ViewBag.IsAdmin == "1" ? "true" : "false"),
+            isAffiliate: @(ViewBag.IsAffiliate == "1" ? "true" : "false"),
+            isCustomer: @(ViewBag.IsCustomer == "1" ? "true" : "false")
+        };
+    </script>
+
+    <script>
+        let db;
+        let brands = {};
+        let categories = {};
+        let dataTable;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize Firebase
+            if (typeof firebase === 'undefined') {
+                console.error('Firebase SDK not loaded');
+                return;
+            }
+
+            try {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(window.firebaseConfig);
+                }
+                db = firebase.firestore();
+
+                loadBrands();
+                loadCategories();
+                loadProducts();
+                setupEventListeners();
+            } catch (error) {
+                console.error('Error initializing Firebase:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to connect to database. Please try again later.',
+                    icon: 'error'
+                });
+            }
+        });
+
+        function setupEventListeners() {
+            // Add product button
+            document.getElementById('addProductBtn').addEventListener('click', function() {
+                document.getElementById('modalTitle').textContent = 'Add New Product';
+                document.getElementById('productForm').reset();
+                document.getElementById('productId').value = '';
+
+                // Show modal
+                new bootstrap.Modal(document.getElementById('productModal')).show();
+            });
+
+            // Save product button
+            document.getElementById('saveProduct').addEventListener('click', function() {
+                saveProduct();
+            });
+
+            // Brand filter change
+            document.getElementById('brandFilter').addEventListener('change', function() {
+                filterProducts();
+            });
+
+            // Add brand button event (inside modal)
+            document.getElementById('addBrandBtn').addEventListener('click', function() {
+                addNewBrand();
+            });
+
+            // Manage brands option in product modal
+            document.getElementById('brandId').addEventListener('click', function(e) {
+                const option = e.target.options[e.target.selectedIndex];
+                if (option && option.value === 'manage') {
+                    // Prevent selection of the manage option
+                    e.preventDefault();
+
+                    // Hide product modal and show brand modal
+                    bootstrap.Modal.getInstance(document.getElementById('productModal')).hide();
+                    setTimeout(() => {
+                        new bootstrap.Modal(document.getElementById('brandModal')).show();
+                    }, 500);
+                }
+            });
+
+            // Brand modal hidden event - reopen product modal
+            document.getElementById('brandModal').addEventListener('hidden.bs.modal', function () {
+                // Reload brands before reopening product modal
+                loadBrands().then(() => {
+                    new bootstrap.Modal(document.getElementById('productModal')).show();
+                });
+            });
+
+            // Search functionality
+            document.getElementById('searchProduct').addEventListener('keyup', function() {
+                const searchValue = this.value.toLowerCase();
+
+                // If DataTable is initialized, use its search
+                if ($.fn.DataTable.isDataTable('#productsTable')) {
+                    $('#productsTable').DataTable().search(searchValue).draw();
+                }
+            });
+        }
+
+        async function loadBrands() {
+            try {
+                const brandSelect = document.getElementById('brandId');
+                const brandFilter = document.getElementById('brandFilter');
+
+                // Clear existing options except the first two (Select Brand and Manage Brands)
+                while (brandSelect.options.length > 0) {
+                    brandSelect.options.remove(0);
+                }
+
+                // Add default options
+                brandSelect.add(new Option('Select Brand', ''));
+
+                // Clear brand filter options
+                while (brandFilter.options.length > 0) {
+                    brandFilter.options.remove(0);
+                }
+
+                // Add All Brands option to filter
+                brandFilter.add(new Option('All Brands', ''));
+
+                // Get brands from Firestore
+                const brandSnapshot = await db.collection('brands').get();
+
+                if (brandSnapshot.empty) {
+                    brandSelect.add(new Option('No brands available', ''));
+                    return;
+                }
+
+                brands = {};
+                const brandsListContainer = document.getElementById('brandsList');
+                brandsListContainer.innerHTML = '';
+
+                brandSnapshot.forEach(doc => {
+                    const brand = doc.data();
+                    const brandId = doc.id;
+                    const brandName = brand.Name || 'Unnamed Brand';
+                    const commissionRate = brand.CommissionRate || 0;
+
+                    // Add to brands map
+                    brands[brandId] = {
+                        name: brandName,
+                        commissionRate: commissionRate
+                    };
+
+                    // Add to select element
+                    brandSelect.add(new Option(brandName, brandId));
+                    brandFilter.add(new Option(brandName, brandId));
+
+                    // Add to brands list in modal
+                    const listItem = document.createElement('li');
+                    listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    listItem.innerHTML = `
+                        <div>
+                            <span class="fw-medium">${brandName}</span>
+                            <span class="badge bg-primary ms-1">${commissionRate}%</span>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-primary edit-brand" data-id="${brandId}" data-name="${brandName}" data-rate="${commissionRate}">
+                                <i class="ti ti-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger delete-brand" data-id="${brandId}">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </div>
+                    `;
+
+                    brandsListContainer.appendChild(listItem);
+
+                    // Add event listeners for brand actions
+                    const editBrandBtn = listItem.querySelector('.edit-brand');
+                    editBrandBtn.addEventListener('click', function() {
+                        editBrand(brandId, brandName, commissionRate);
+                    });
+
+                    const deleteBrandBtn = listItem.querySelector('.delete-brand');
+                    deleteBrandBtn.addEventListener('click', function() {
+                        deleteBrand(brandId, brandName);
+                    });
+                });
+
+                // Add "Add/Manage Brands" option at the end
+                brandSelect.add(new Option('-- Manage Brands --', 'manage'));
+
+            } catch (error) {
+                console.error('Error loading brands:', error);
+            }
+        }
+
+        async function loadCategories() {
+            try {
+                const categorySelect = document.getElementById('categoryId');
+
+                // Clear existing options
+                while (categorySelect.options.length > 0) {
+                    categorySelect.options.remove(0);
+                }
+
+                // Add default option
+                categorySelect.add(new Option('Select Category', ''));
+
+                // Get categories from Firestore
+                const categorySnapshot = await db.collection('categories').get();
+
+                if (categorySnapshot.empty) {
+                    categorySelect.add(new Option('No categories available', ''));
+                    return;
+                }
+
+                categories = {};
+
+                categorySnapshot.forEach(doc => {
+                    const category = doc.data();
+                    const categoryId = doc.id;
+                    const categoryName = category.Name || 'Unnamed Category';
+
+                    // Add to categories map
+                    categories[categoryId] = {
+                        name: categoryName,
+                        brandId: category.BrandId
+                    };
+
+                    // Add to select element
+                    categorySelect.add(new Option(categoryName, categoryId));
+                });
+
+            } catch (error) {
+                console.error('Error loading categories:', error);
+            }
+        }
+
+        async function loadProducts() {
+            const tableBody = document.querySelector('#productsTable tbody');
+
+            try {
+                // Get products from Firestore
+                const productSnapshot = await db.collection('products').get();
+
+                if (productSnapshot.empty) {
+                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No products found</td></tr>';
+                    return;
+                }
+
+                // Process and display data
+                const products = [];
+
+                productSnapshot.forEach(doc => {
+                    const product = doc.data();
+                    const productId = doc.id;
+
+                    // Get brand name
+                    let brandName = 'Unknown';
+                    if (product.BrandId && brands[product.BrandId]) {
+                        brandName = brands[product.BrandId].name;
+                    }
+
+                    products.push({
+                        id: productId,
+                        name: product.Name || 'Unnamed Product',
+                        sku: product.SKU || 'N/A',
+                        price: parseFloat(product.Price || 0),
+                        stock: parseInt(product.Stock || 0),
+                        commission: parseFloat(product.Commission || 0),
+                        brandId: product.BrandId || '',
+                        brandName: brandName,
+                        categoryId: product.CategoryId || '',
+                        description: product.Description || '',
+                        image: product.Image || '',
+                        data: product
+                    });
+                });
+
+                // Render table
+                tableBody.innerHTML = '';
+
+                products.forEach(product => {
+                    const row = document.createElement('tr');
+
+                    row.innerHTML = `
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar avatar-sm me-2">
+                                    ${product.image ?
+                                        `<img src="${product.image}" alt="${product.name}" class="rounded-circle">` :
+                                        `<span class="avatar-initial rounded-circle bg-label-primary">
+                                            ${product.name.charAt(0).toUpperCase()}
+                                        </span>`
+                                    }
+                                </div>
+                                <div class="d-flex flex-column">
+                                    <span class="text-body text-truncate fw-semibold">
+                                        ${product.name}
+                                    </span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${product.brandName}</td>
+                        <td>${product.sku}</td>
+                        <td>$${product.price.toFixed(2)}</td>
+                        <td>${product.stock}</td>
+                        <td>$${product.commission.toFixed(2)}</td>
+                        <td>
+                            <div class="dropdown">
+                                <button type="button" class="btn btn-sm dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
+                                    <i class="ti ti-dots-vertical"></i>
+                                </button>
+                                <div class="dropdown-menu">
+                                    <button class="dropdown-item edit-product" data-id="${product.id}">
+                                        <i class="ti ti-edit me-1"></i> Edit
+                                    </button>
+                                    <button class="dropdown-item text-danger delete-product" data-id="${product.id}">
+                                        <i class="ti ti-trash me-1"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
+                    `;
+
+                    tableBody.appendChild(row);
+
+                    // Add event listeners for product actions
+                    const editBtn = row.querySelector('.edit-product');
+                    editBtn.addEventListener('click', () => editProduct(product.id));
+
+                    const deleteBtn = row.querySelector('.delete-product');
+                    deleteBtn.addEventListener('click', () => deleteProduct(product.id, product.name));
+                });
+
+                // Initialize DataTable
+                if ($.fn.DataTable) {
+                    if (dataTable) {
+                        dataTable.destroy();
+                    }
+
+                    dataTable = $('#productsTable').DataTable({
+                        responsive: true,
+                        pageLength: 10,
+                        language: {
+                            search: '',
+                            searchPlaceholder: 'Search products'
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading products:', error);
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error loading product data</td></tr>';
+            }
+        }
+
+        function filterProducts() {
+            const brandId = document.getElementById('brandFilter').value;
+
+            if (!dataTable) return;
+
+            // Clear existing filter
+            dataTable.column(1).search('').draw();
+
+            if (brandId) {
+                const brandName = brands[brandId]?.name || '';
+                dataTable.column(1).search(brandName).draw();
+            } else {
+                dataTable.column(1).search('').draw();
+            }
+        }
+
+        async function saveProduct() {
+            try {
+                const productId = document.getElementById('productId').value;
+                const name = document.getElementById('productName').value;
+                const sku = document.getElementById('sku').value;
+                const brandId = document.getElementById('brandId').value;
+                const categoryId = document.getElementById('categoryId').value;
+                const price = parseFloat(document.getElementById('price').value);
+                const stock = parseInt(document.getElementById('stock').value);
+                const commission = parseFloat(document.getElementById('commission').value || 0);
+                const description = document.getElementById('description').value;
+                const imageUrl = document.getElementById('imageUrl').value;
+
+                if (!name || !sku || !brandId || !categoryId || isNaN(price) || isNaN(stock)) {
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Please fill in all required fields',
+                        icon: 'error'
+                    });
+                    return;
+                }
+
+                // Show loading
+                Swal.fire({
+                    title: 'Saving...',
+                    didOpen: () => {
+                        Swal.showLoading();
+                    },
+                    allowOutsideClick: false
+                });
+
+                const productData = {
+                    Name: name,
+                    SKU: sku,
+                    BrandId: brandId,
+                    CategoryId: categoryId,
+                    Price: price,
+                    Stock: stock,
+                    Commission: commission,
+                    Description: description,
+                    Image: imageUrl,
+                    UpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                if (productId) {
+                    // Update existing product
+                    await db.collection('products').doc(productId).update(productData);
+                } else {
+                    // Add CreatedAt for new products
+                    productData.CreatedAt = firebase.firestore.FieldValue.serverTimestamp();
+
+                    // Create new product
+                    await db.collection('products').add(productData);
+                }
+
+                Swal.fire({
+                    title: 'Success',
+                    text: productId ? 'Product updated successfully' : 'Product created successfully',
+                    icon: 'success',
+                    timer: 1500
+                });
+
+                // Close modal and reload products
+                bootstrap.Modal.getInstance(document.getElementById('productModal')).hide();
+                loadProducts();
+
+            } catch (error) {
+                console.error('Error saving product:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to save product. Please try again.',
+                    icon: 'error'
+                });
+            }
+        }
+
+        async function editProduct(productId) {
+            try {
+                const productDoc = await db.collection('products').doc(productId).get();
+
+                if (!productDoc.exists) {
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Product not found',
+                        icon: 'error'
+                    });
+                    return;
+                }
+
+                const product = productDoc.data();
+
+                document.getElementById('modalTitle').textContent = 'Edit Product';
+                document.getElementById('productId').value = productId;
+                document.getElementById('productName').value = product.Name || '';
+                document.getElementById('sku').value = product.SKU || '';
+                document.getElementById('brandId').value = product.BrandId || '';
+                document.getElementById('categoryId').value = product.CategoryId || '';
+                document.getElementById('price').value = product.Price || 0;
+                document.getElementById('stock').value = product.Stock || 0;
+                document.getElementById('commission').value = product.Commission || 0;
+                document.getElementById('description').value = product.Description || '';
+                document.getElementById('imageUrl').value = product.Image || '';
+
+                // Show modal
+                new bootstrap.Modal(document.getElementById('productModal')).show();
+
+            } catch (error) {
+                console.error('Error loading product details:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to load product details',
+                    icon: 'error'
+                });
+            }
+        }
+
+        async function deleteProduct(productId, productName) {
+            try {
+                const result = await Swal.fire({
+                    title: 'Are you sure?',
+                    text: `Do you want to delete ${productName || 'this product'}?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, delete it',
+                    cancelButtonText: 'No, cancel'
+                });
+
+                if (result.isConfirmed) {
+                    // Show loading
+                    Swal.fire({
+                        title: 'Deleting...',
+                        didOpen: () => {
+                            Swal.showLoading();
+                        },
+                        allowOutsideClick: false
+                    });
+
+                    // Delete product
+                    await db.collection('products').doc(productId).delete();
+
+                    Swal.fire({
+                        title: 'Success',
+                        text: 'Product deleted successfully',
+                        icon: 'success',
+                        timer: 1500
+                    });
+
+                    // Reload products
+                    loadProducts();
+                }
+            } catch (error) {
+                console.error('Error deleting product:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to delete product',
+                    icon: 'error'
+                });
+            }
+        }
+
+        async function addNewBrand() {
+            try {
+                const brandName = document.getElementById('brandName').value;
+                const commissionRate = parseFloat(document.getElementById('defaultCommission').value || 0);
+
+                if (!brandName) {
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Please enter a brand name',
+                        icon: 'error'
+                    });
+                    return;
+                }
+
+                // Show loading
+                Swal.fire({
+                    title: 'Saving...',
+                    didOpen: () => {
+                        Swal.showLoading();
+                    },
+                    allowOutsideClick: false
+                });
+
+                // Add new brand
+                await db.collection('brands').add({
+                    Name: brandName,
+                    CommissionRate: commissionRate,
+                    CreatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    UpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                Swal.fire({
+                    title: 'Success',
+                    text: 'Brand added successfully',
+                    icon: 'success',
+                    timer: 1500
+                });
+
+                // Clear form
+                document.getElementById('brandName').value = '';
+
+                // Reload brands
+                await loadBrands();
+
+            } catch (error) {
+                console.error('Error adding brand:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to add brand',
+                    icon: 'error'
+                });
+            }
+        }
+
+        async function editBrand(brandId, brandName, commissionRate) {
+            try {
+                // Prompt for new values
+                const { value: formValues } = await Swal.fire({
+                    title: 'Edit Brand',
+                    html:
+                        `<input id="swal-brand-name" class="swal2-input" placeholder="Brand Name" value="${brandName}">` +
+                        `<input id="swal-commission-rate" class="swal2-input" type="number" placeholder="Commission Rate %" value="${commissionRate}">`,
+                    focusConfirm: false,
+                    showCancelButton: true,
+                    preConfirm: () => {
+                        return {
+                            name: document.getElementById('swal-brand-name').value,
+                            rate: document.getElementById('swal-commission-rate').value
+                        }
+                    }
+                });
+
+                if (!formValues) return;
+
+                if (!formValues.name) {
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Brand name cannot be empty',
+                        icon: 'error'
+                    });
+                    return;
+                }
+
+                // Update brand
+                await db.collection('brands').doc(brandId).update({
+                    Name: formValues.name,
+                    CommissionRate: parseFloat(formValues.rate || 0),
+                    UpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                Swal.fire({
+                    title: 'Success',
+                    text: 'Brand updated successfully',
+                    icon: 'success',
+                    timer: 1500
+                });
+
+                // Reload brands
+                await loadBrands();
+
+            } catch (error) {
+                console.error('Error updating brand:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to update brand',
+                    icon: 'error'
+                });
+            }
+        }
+
+        async function deleteBrand(brandId, brandName) {
+            try {
+                // Check if there are products using this brand
+                const productsSnapshot = await db.collection('products')
+                    .where('BrandId', '==', brandId)
+                    .limit(1)
+                    .get();
+
+                if (!productsSnapshot.empty) {
+                    Swal.fire({
+                        title: 'Cannot Delete',
+                        text: 'This brand is being used by one or more products',
+                        icon: 'error'
+                    });
+                    return;
+                }
+
+                // Confirm deletion
+                const result = await Swal.fire({
+                    title: 'Are you sure?',
+                    text: `Do you want to delete the brand "${brandName}"?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, delete it',
+                    cancelButtonText: 'No, cancel'
+                });
+
+                if (result.isConfirmed) {
+                    // Delete brand
+                    await db.collection('brands').doc(brandId).delete();
+
+                    Swal.fire({
+                        title: 'Success',
+                        text: 'Brand deleted successfully',
+                        icon: 'success',
+                        timer: 1500
+                    });
+
+                    // Reload brands
+                    await loadBrands();
+                }
+            } catch (error) {
+                console.error('Error deleting brand:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Failed to delete brand',
+                    icon: 'error'
+                });
+            }
+        }
+    </script>
+}

@@ -3,12 +3,20 @@
   ViewData["customizerHidden"] = (ViewData["customizerHidden"] ??= "customizer-hide");
 }
 
-@section VendorStyles { @RenderSection("VendorStyles", required: false) }
+@section VendorStyles {
+  @RenderSection("VendorStyles", required: false)
+}
 
-@section PageStyles { @RenderSection("PageStyles", required: false) }
+@section PageStyles {
+  @RenderSection("PageStyles", required: false)
+}
 
 @RenderBody()
 
-@section VendorScripts { @RenderSection("VendorScripts", required: false) }
+@section VendorScripts {
+  @RenderSection("VendorScripts", required: false)
+}
 
-@section PageScripts { @RenderSection("PageScripts", required: false) }
+@section PageScripts {
+  @RenderSection("PageScripts", required: false)
+}

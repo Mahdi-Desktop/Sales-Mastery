@@ -1,0 +1,347 @@
+@{
+  ViewData["Title"] = "Admin Dashboard";
+  Layout = "_ContentNavbarLayout";
+}
+
+@section VendorStyles {
+  <link rel="stylesheet" href="~/vendor/libs/apex-charts/apex-charts.css" />
+  <link rel="stylesheet" href="~/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
+  <link rel="stylesheet" href="~/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+  <link rel="stylesheet" href="~/vendor/libs/daterangepicker/daterangepicker.css" />
+}
+
+<div class="container-xxl flex-grow-1 container-p-y">
+  <div class="row">
+    <div class="col-12 mb-4">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between pb-0">
+          <div class="card-title mb-0">
+            @* <h5 class="mb-0">Admin Dashboard</h5> *@
+            <small class="text-muted">Sales Performance Overview</small>
+          </div>
+          <div class="dropdown">
+            <button class="btn p-0" type="button" id="dashboardSettings" data-bs-toggle="dropdown" aria-haspopup="true"
+              aria-expanded="false">
+              <i class="ti ti-dots-vertical"></i>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dashboardSettings">
+              <a class="dropdown-item" href="javascript:void(0);" id="exportOrders">Export Orders</a>
+              <a class="dropdown-item" href="javascript:void(0);" id="print-dashboard">Print Dashboard</a>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+            <div class="d-flex align-items-center">
+              <div class="d-flex align-items-center">
+                <div id="reportrange" class="btn border text-muted dropdown-toggle p-2">
+                  <i class="ti ti-calendar me-1"></i>
+                  <span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-12 col-sm-6 col-md-3 mb-4">
+              <div class="card p-2 pb-0">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div class="card-title mb-0">
+                      <h5 class="mb-0">Active Affiliates</h5>
+                      <small>Total number of active affiliates</small>
+                    </div>
+                    <div class="badge bg-label-primary rounded-3 p-2">
+                      <i class="ti ti-users"></i>
+                    </div>
+                  </div>
+                  <h2 class="my-2" id="activeAffiliatesCount">0</h2>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3 mb-4">
+              <div class="card p-2 pb-0">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div class="card-title mb-0">
+                      <h5 class="mb-0">Total Customers</h5>
+                      <small>In selected period</small>
+                    </div>
+                    <div class="badge bg-label-info rounded-3 p-2">
+                      <i class="ti ti-user"></i>
+                    </div>
+                  </div>
+                  <h2 class="my-2" id="totalCustomersCount">0</h2>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3 mb-4">
+              <div class="card p-2 pb-0">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div class="card-title mb-0">
+                      <h5 class="mb-0">Total Orders</h5>
+                      <small>In selected period</small>
+                    </div>
+                    <div class="badge bg-label-success rounded-3 p-2">
+                      <i class="ti ti-shopping-cart"></i>
+                    </div>
+                  </div>
+                  <h2 class="my-2" id="totalOrdersCount">0</h2>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3 mb-4">
+              <div class="card p-2 pb-0">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div class="card-title mb-0">
+                      <h5 class="mb-0">Conversion Rate</h5>
+                      <small>Customers to orders</small>
+                    </div>
+                    <div class="badge bg-label-warning rounded-3 p-2">
+                      <i class="ti ti-chart-pie"></i>
+                    </div>
+                  </div>
+                  <h2 class="my-2" id="conversionRate">0%</h2>
+                </div>
+              </div>
+            </div>
+          </div>
+         @*  <div class="row mb-4">
+            <div class="col-12 col-lg-8 mb-4">
+              <div class="card">
+                <div class="card-header d-flex justify-content-between">
+                  <h5 class="card-title mb-0">Revenue & Commissions</h5>
+                  <div class="dropdown">
+                    <button class="btn p-0" type="button" id="revenueChartDropdown" data-bs-toggle="dropdown"
+                      aria-haspopup="true" aria-expanded="false">
+                      <i class="ti ti-dots-vertical"></i>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="revenueChartDropdown">
+                      <a class="dropdown-item" href="javascript:void(0);">Last 28 Days</a>
+                      <a class="dropdown-item" href="javascript:void(0);">Last Month</a>
+                      <a class="dropdown-item" href="javascript:void(0);">Last Year</a>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div id="revenueChart"></div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-lg-4 mb-4">
+              <div class="card">
+                <div class="card-header d-flex justify-content-between">
+                  <h5 class="card-title mb-0">Financial Summary</h5>
+                </div>
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center my-3">
+                    <div class="d-flex align-items-center">
+                      <div class="badge rounded bg-label-primary p-1 me-2">
+                        <i class="ti ti-currency-dollar ti-sm"></i>
+                      </div>
+                      <h6 class="mb-0">Total Revenue</h6>
+                    </div>
+                    <h6 class="mb-0" id="totalRevenue">$0</h6>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center my-3">
+                    <div class="d-flex align-items-center">
+                      <div class="badge rounded bg-label-warning p-1 me-2">
+                        <i class="ti ti-currency-dollar ti-sm"></i>
+                      </div>
+                      <h6 class="mb-0">Affiliate Earnings</h6>
+                    </div>
+                    <h6 class="mb-0" id="affiliateEarnings">$0</h6>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center my-3">
+                    <div class="d-flex align-items-center">
+                      <div class="badge rounded bg-label-success p-1 me-2">
+                        <i class="ti ti-currency-dollar ti-sm"></i>
+                      </div>
+                      <h6 class="mb-0">Net Profit</h6>
+                    </div>
+                    <h6 class="mb-0" id="netProfit">$0</h6>
+                  </div>
+                </div>
+              </div>
+              <div class="card mt-4">
+                <div class="card-header">
+                  <h5 class="card-title mb-0">Commission Payouts</h5>
+                </div>
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center my-2">
+                    <div class="d-flex align-items-center">
+                      <div class="badge rounded bg-label-primary p-1 me-2">
+                        <i class="ti ti-currency-dollar ti-sm"></i>
+                      </div>
+                      <h6 class="mb-0">Total Commission</h6>
+                    </div>
+                    <h6 class="mb-0" id="totalCommissionAmount">$0</h6>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center my-2">
+                    <div class="d-flex align-items-center">
+                      <div class="badge rounded bg-label-success p-1 me-2">
+                        <i class="ti ti-check ti-sm"></i>
+                      </div>
+                      <h6 class="mb-0">Paid Commission</h6>
+                    </div>
+                    <h6 class="mb-0" id="paidCommissionAmount">$0</h6>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center my-2">
+                    <div class="d-flex align-items-center">
+                      <div class="badge rounded bg-label-warning p-1 me-2">
+                        <i class="ti ti-clock ti-sm"></i>
+                      </div>
+                      <h6 class="mb-0">Pending Payout</h6>
+                    </div>
+                    <h6 class="mb-0" id="pendingPayoutAmount">$0</h6>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center my-2">
+                    <div class="d-flex align-items-center">
+                      <div class="badge rounded bg-label-info p-1 me-2">
+                        <i class="ti ti-calendar ti-sm"></i>
+                      </div>
+                      <h6 class="mb-0">Next Payout Date</h6>
+                    </div>
+                    <h6 class="mb-0" id="nextPayoutDate">-</h6>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div> *@
+          <div class="row">
+            <div class="col-12 col-md-6 mb-4">
+              <div class="card h-100">
+                <div class="card-header d-flex justify-content-between">
+                  <h5 class="card-title mb-0">Top Affiliates</h5>
+                  <a href="/Admin/Affiliates" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body pt-0">
+                  <div class="table-responsive">
+                    <table class="table table-hover" id="topAffiliatesTable">
+                      <thead>
+                        <tr>
+                          <th>Affiliate</th>
+                          <th>Customers</th>
+                          <th>Orders</th>
+                          <th>Revenue</th>
+                          <th>Commission</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td colspan="5" class="text-center">Loading affiliates...</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-md-6 mb-4">
+              <div class="card h-100">
+                <div class="card-header d-flex justify-content-between">
+                  <h5 class="card-title mb-0">Recent Orders</h5>
+                  <a href="/Admin/Orders" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body pt-0">
+                  <div class="table-responsive">
+                    <table class="table table-hover" id="recentOrdersTable">
+                      <thead>
+                        <tr>
+                          <th>Order ID</th>
+                          <th>Customer</th>
+                          <th>Date</th>
+                          <th>Amount</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td colspan="6" class="text-center">Loading orders...</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-12 mb-4">
+              <div class="card">
+                <div class="card-header d-flex justify-content-between">
+                  <h5 class="card-title mb-0">Recent Commissions</h5>
+                  <a href="/Admin/Commissions" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body pt-0">
+                  <div class="table-responsive">
+                    <table class="table table-hover" id="recentCommissionsTable">
+                      <thead>
+                        <tr>
+                          <th>Affiliate</th>
+                          <th>Order</th>
+                          <th>Date</th>
+                          <th>Amount</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td colspan="5" class="text-center">Loading commissions...</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase Scripts -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+
+@section VendorScripts {
+  <!-- Chart and Date Libraries -->
+  <script src="~/vendor/libs/apex-charts/apexcharts.js"></script>
+  <script src="~/vendor/libs/moment/moment.js"></script>
+  <script src="~/vendor/libs/daterangepicker/daterangepicker.js"></script>
+  <script src="~/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+}
+
+<!-- Initialize Firebase -->
+<script>
+  // Pass Firebase configuration from server to client
+  window.firebaseConfig = {
+    apiKey: "@ViewBag.FirebaseApiKey",
+    authDomain: "@ViewBag.FirebaseProjectId" + ".firebaseapp.com",
+    projectId: "@ViewBag.FirebaseProjectId",
+    storageBucket: "@ViewBag.FirebaseStorageBucket",
+    messagingSenderId: "@ViewBag.FirebaseMessagingSenderId",
+    appId: "@ViewBag.FirebaseAppId"
+  };
+
+  // Set user context for access control
+  window.userContext = {
+    userId: "@ViewBag.UserId",
+    isAdmin: @(ViewBag.IsAdmin == "1" ? "true" : "false"),
+    isAffiliate: @(ViewBag.IsAffiliate == "1" ? "true" : "false"),
+    isCustomer: @(ViewBag.IsCustomer == "1" ? "true" : "false")
+  };
+
+  console.log("Admin Dashboard loaded with user context:", window.userContext);
+</script>
+
+<!-- Load Admin Dashboard Logic -->
+<script src="~/js/firebase-init.js"></script>
+<script src="~/js/admin-libs-loader.js"></script>
+<script src="~/js/admin-dashboard.js"></script>

@@ -14,7 +14,8 @@
 <!-- Menu -->
 <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
 
-    <div class='app-brand demo @((@ViewData["navbarFull"] != null && Convert.ToBoolean(@ViewData["navbarFull"])) ? "d-xl-none" : "")'>
+    <div
+    class='app-brand demo @((@ViewData["navbarFull"] != null && Convert.ToBoolean(@ViewData["navbarFull"])) ? "d-xl-none" : "")'>
         <a asp-controller="Dashboards" asp-action="Index" class="app-brand-link">
             <span class="app-brand-logo demo">
                 @await Html.PartialAsync("../_Partials/_Macros")
@@ -31,96 +32,108 @@
     <div class="menu-inner-shadow"></div>
 
     <ul class="menu-inner py-1">
-@*         @if (isAdmin)
+        @if (isAdmin)
         {
             <li class="menu-header small">
                 <span class="menu-header-text">Administration</span>
             </li>
-            <li class='menu-item@(currentPage.StartsWith("/Order") ? " active open" : "")'>
+            <li class='menu-item@(currentPage.StartsWith("/Admin/Dashboard") ? " active" : "")'>
+                <a asp-controller="Admin" asp-action="Dashboard" class="menu-link">
+                    <i class="menu-icon tf-icons ti ti-dashboard"></i>
+                    <div data-i18n="Dashboard">Dashboard</div>
+                </a>
+            </li>
+            <li class='menu-item@(currentPage.StartsWith("/Admin/Orders") ? " active open" : "")'>
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons ti ti-shopping-cart"></i>
                     <div data-i18n="Orders">Orders</div>
                 </a>
                 <ul class="menu-sub">
-                    <li class='menu-item@(currentPage == "/Order/List" ? " active" : "")'>
-                        <a asp-controller="Order" asp-action="List" class="menu-link">
-                            <div data-i18n="List">List</div>
-                        </a>
-                    </li>
-                    <li class='menu-item@(currentPage == "/Order/Create" ? " active" : "")'>
-                        <a asp-controller="Order" asp-action="Create" class="menu-link">
-                            <div data-i18n="Create">Create</div>
+                    <li class='menu-item@(currentPage == "/Admin/Orders" ? " active" : "")'>
+                        <a asp-controller="Admin" asp-action="Orders" class="menu-link">
+                            <div data-i18n="All Orders">All Orders</div>
                         </a>
                     </li>
                 </ul>
             </li>
-            <li class='menu-item@(currentPage.StartsWith("/Product") ? " active open" : "")'>
+            <li class='menu-item@(currentPage.StartsWith("/Admin/Affiliates") ? " active open" : "")'>
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
-                    <i class="menu-icon tf-icons ti ti-box"></i>
-                    <div data-i18n="Products">Products</div>
+                    <i class="menu-icon tf-icons ti ti-users"></i>
+                    <div data-i18n="Affiliates">Affiliates</div>
                 </a>
                 <ul class="menu-sub">
-                    <li class='menu-item@(currentPage == "/Product/List" ? " active" : "")'>
-                        <a asp-controller="Product" asp-action="List" class="menu-link">
-                            <div data-i18n="List">List</div>
-                        </a>
-                    </li>
-                    <li class='menu-item@(currentPage == "/Product/Create" ? " active" : "")'>
-                        <a asp-controller="Product" asp-action="Create" class="menu-link">
-                            <div data-i18n="Create">Create</div>
-                        </a>
-                    </li>
-                    <li class='menu-item@(currentPage == "/Product/Categories" ? " active" : "")'>
-                        <a asp-controller="Product" asp-action="Categories" class="menu-link">
-                            <div data-i18n="Categories">Categories</div>
+                    <li class='menu-item@(currentPage == "/Admin/Affiliates" ? " active" : "")'>
+                        <a asp-controller="Admin" asp-action="Affiliates" class="menu-link">
+                            <div data-i18n="Manage Affiliates">Manage Affiliates</div>
                         </a>
                     </li>
                 </ul>
             </li>
-            <li class='menu-item@(currentPage.StartsWith("/Customer") ? " active open" : "")'>
+            <li class='menu-item@(currentPage.StartsWith("/Admin/Customers") ? " active open" : "")'>
                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                     <i class="menu-icon tf-icons ti ti-user"></i>
                     <div data-i18n="Customers">Customers</div>
                 </a>
                 <ul class="menu-sub">
-                    <li class='menu-item@(currentPage == "/Customer/List" ? " active" : "")'>
-                        <a asp-controller="Customer" asp-action="List" class="menu-link">
-                            <div data-i18n="List">List</div>
-                        </a>
-                    </li>
-                    <li class='menu-item@(currentPage == "/Customer/Create" ? " active" : "")'>
-                        <a asp-controller="Customer" asp-action="Create" class="menu-link">
-                            <div data-i18n="Create">Create</div>
+                    <li class='menu-item@(currentPage == "/Admin/Customers" ? " active" : "")'>
+                        <a asp-controller="Admin" asp-action="Customers" class="menu-link">
+                            <div data-i18n="All Customers">All Customers</div>
                         </a>
                     </li>
                 </ul>
             </li>
-            <li class='menu-item@(currentPage.StartsWith("/Settings") ? " active open" : "")'>
-                <a href="javascript:void(0);" class="menu-link menu-toggle">
+            <li class='menu-item@(currentPage == "/Admin/Commissions" ? " active" : "")'>
+                <a asp-controller="Admin" asp-action="Commissions" class="menu-link">
+                    <i class="menu-icon tf-icons ti ti-cash"></i>
+                    <div data-i18n="Commissions">Commissions</div>
+                </a>
+            </li>
+@*             <li class='menu-item@(currentPage == "/Admin/Products" ? " active" : "")'>
+                <a asp-controller="Admin" asp-action="Products" class="menu-link">
+                    <i class="menu-icon tf-icons ti ti-box"></i>
+                    <div data-i18n="Products">Products</div>
+                </a>
+            </li> *@
+            <li class='menu-item@(currentPage == "/Admin/Reports" ? " active" : "")'>
+                <a asp-controller="Admin" asp-action="Reports" class="menu-link">
+                    <i class="menu-icon tf-icons ti ti-report"></i>
+                    <div data-i18n="Reports">Reports</div>
+                </a>
+            </li>
+            @*  <li class='menu-item@(currentPage == "/Admin/Settings" ? " active" : "")'>
+                <a asp-controller="Admin" asp-action="Settings" class="menu-link">
                     <i class="menu-icon tf-icons ti ti-settings"></i>
                     <div data-i18n="Settings">Settings</div>
                 </a>
+            </li> *@
+        }
+
+
+                <!-- Users SECTION - Admin users -->
+        @if (isAdmin) // Only Admin can manage reviews
+
+        {
+
+            <li class="menu-header small">
+                <span class="menu-header-text" data-i18n="Users">Users</span>
+            </li>
+            <li class='menu-item@(currentPage.StartsWith("/Users") ? " active open" : "")'>
+                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                    <i class="menu-icon tf-icons ti ti-users"></i>
+                    <div data-i18n="Users">Users</div>
+                </a>
                 <ul class="menu-sub">
-                    <li class='menu-item@(currentPage == "/Settings/General" ? " active" : "")'>
-                        <a asp-controller="Settings" asp-action="General" class="menu-link">
-                            <div data-i18n="General">General</div>
-                        </a>
-                    </li>
-                    <li class='menu-item@(currentPage == "/Settings/Appearance" ? " active" : "")'>
-                        <a asp-controller="Settings" asp-action="Appearance" class="menu-link">
-                            <div data-i18n="Appearance">Appearance</div>
-                        </a>
-                    </li>
-                    <li class='menu-item@(currentPage == "/Settings/Email" ? " active" : "")'>
-                        <a asp-controller="Settings" asp-action="Email" class="menu-link">
-                            <div data-i18n="Email">Email</div>
+                    <li class='menu-item@(currentPage == "/Users/List" ? " active" : "")'>
+                        <a asp-controller="Users" asp-action="List" class="menu-link">
+                            <div data-i18n="List">List</div>
                         </a>
                     </li>
                 </ul>
             </li>
-        } *@
+        }
 
-        @if (isAdmin || isAffiliate)
+
+        @if (isAffiliate)
         {
             <li class="menu-header small">
                 <span class="menu-header-text">Affiliate Program</span>
@@ -146,7 +159,7 @@
                             <div data-i18n="Customers">Customers</div>
                         </a>
                     </li>
-                    @if (isAdmin)
+@*                     @if (isAdmin)
                     {
                         <li class='menu-item@(currentPage == "/Affiliate/Manage" ? " active" : "")'>
                             <a asp-controller="Affiliate" asp-action="Manage" class="menu-link">
@@ -158,12 +171,14 @@
                                 <div data-i18n="Program Settings">Program Settings</div>
                             </a>
                         </li>
-                    }
+                    } *@
                 </ul>
             </li>
         }
 
-        <!-- Profile Details menu - Admin and Affiliate only -->
+        <li class="menu-header small">
+            <span class="menu-header-text">Account Pages</span>
+        </li>
         <li class='menu-item@(currentPage.StartsWith("/Pages") ? " active open" : "")'>
             <a href="javascript:void(0);" class="menu-link menu-toggle">
                 <i class="menu-icon tf-icons ti ti-file"></i>
@@ -199,7 +214,7 @@
                         </li>
                     </ul>
                 </li>
-               @*  <li class='menu-item@(currentPage == "/Pages/FAQ" ? " active" : "")'>
+                @*  <li class='menu-item@(currentPage == "/Pages/FAQ" ? " active" : "")'>
                     <a asp-controller="Pages" asp-action="FAQ" class="menu-link">
                         <div data-i18n="FAQ">FAQ</div>
                     </a>
@@ -240,7 +255,7 @@
         </li>
 
         <!-- e-commerce-app menu - Admin and Affiliate only -->
-        @if (isAdmin || isAffiliate)
+        @if (isAdmin )
         {
             <li class="menu-header small">
                 <span class="menu-header-text" data-i18n="Ecommerce">Ecommerce</span>
@@ -251,11 +266,11 @@
                     <div data-i18n="eCommerce">eCommerce</div>
                 </a>
                 <ul class="menu-sub">
-                    <li class='menu-item@(currentPage == "/Ecommerce/Dashboard" ? " active" : "")'>
+                    @*     <li class='menu-item@(currentPage == "/Ecommerce/Dashboard" ? " active" : "")'>
                         <a asp-controller="Ecommerce" asp-action="Dashboard" class="menu-link">
                             <div data-i18n="Dashboard">Dashboard</div>
                         </a>
-                    </li>
+                    </li> *@
                     <li class='menu-item@(currentPage.StartsWith("/Ecommerce/Product") ? " active open" : "")'>
                         <a href="javascript:void(0);" class="menu-link menu-toggle">
                             <div data-i18n="Products">Products</div>
@@ -267,26 +282,30 @@
                                     <div data-i18n="Product List">Product List</div>
                                 </a>
                             </li>
-                            @if (isAdmin)
-                            {
+                            @* @if (isAdmin) *@
+
+                            @* { *@
+
+
 
                                 <li class='menu-item@(currentPage == "/Ecommerce/ProductAdd" ? " active" : "")'>
                                     <a asp-controller="Ecommerce" asp-action="ProductAdd" class="menu-link">
                                         <div data-i18n="Add Product">Add Product</div>
                                     </a>
                                 </li>
-                            }
 
-                            <li class='menu-item@(currentPage == "/Ecommerce/ProductCategoryList" ? " active" : "")'>
-                                <a asp-controller="Ecommerce" asp-action="ProductCategoryList" class="menu-link">
-                                    <div data-i18n="Category List">Category List</div>
-                                </a>
-                            </li>
 
+                                <li class='menu-item@(currentPage == "/Ecommerce/ProductCategoryList" ? " active" : "")'>
+                                    <a asp-controller="Ecommerce" asp-action="ProductCategoryList" class="menu-link">
+                                        <div data-i18n="Category List">Category List</div>
+                                    </a>
+                                </li>
+
+                            @* } *@
                         </ul>
                     </li>
 
-                    @if (isAdmin) // Only Admin can manage reviews
+@*                     @if (isAdmin) // Only Admin can manage reviews
                     {
                         <li class='menu-item@(currentPage.StartsWith("/Ecommerce/Order") ? " active open" : "")'>
                             <a href="javascript:void(0);" class="menu-link menu-toggle">
@@ -327,8 +346,8 @@
                             </ul>
                         </li>
 
-                    }
-                   @*  @if (isAdmin) // Only Admin can manage reviews
+                    } *@
+                    @*  @if (isAdmin) // Only Admin can manage reviews
                     {
                         <li class='menu-item@(currentPage == "/Ecommerce/ManageReviews" ? " active" : "")'>
                             <a asp-controller="Ecommerce" asp-action="ManageReviews" class="menu-link">
@@ -380,29 +399,6 @@
             </ul>
         </li>
 
-
-        <!-- Users SECTION - Admin users -->
-        @if (isAdmin) // Only Admin can manage reviews
-
-        {
-
-            <li class="menu-header small">
-                <span class="menu-header-text" data-i18n="Users">Users</span>
-            </li>
-            <li class='menu-item@(currentPage.StartsWith("/Users") ? " active open" : "")'>
-                <a href="javascript:void(0);" class="menu-link menu-toggle">
-                    <i class="menu-icon tf-icons ti ti-users"></i>
-                    <div data-i18n="Users">Users</div>
-                </a>
-                <ul class="menu-sub">
-                    <li class='menu-item@(currentPage == "/Users/List" ? " active" : "")'>
-                        <a asp-controller="Users" asp-action="List" class="menu-link">
-                            <div data-i18n="List">List</div>
-                        </a>
-                    </li>
-                </ul>
-            </li>
-        }
 
 
 
